@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Adaptive Coach</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A0B0D">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <h1>Adaptive Coach</h1>
+    <div class="streak" id="streak-value">0 day streak</div>
+  </div>
+
+  <div class="signal-panel">
+    <div class="signal-panel-label">Signal — what the plan is reading from you</div>
+    <svg class="signal-wave" id="signal-wave"></svg>
+    <div class="signal-feed" id="signal-feed"></div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-compliance">0%</div>
+      <div class="stat-label">This week</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-sessions">0</div>
+      <div class="stat-label">Total logs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-movements">0</div>
+      <div class="stat-label">Movements</div>
+    </div>
+  </div>
+
+  <div class="session-card">
+    <div class="session-card-header">
+      <h2>Today's targets</h2>
+      <span class="tag">auto-adjusted</span>
+    </div>
+    <div id="movement-list"></div>
+  </div>
+
+  <div class="chart-panel">
+    <h3>Volume over time</h3>
+    <canvas id="progress-chart" height="180"></canvas>
+  </div>
+
+</div>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal-sheet">
+    <h3 id="modal-title">Log session</h3>
+    <div class="field">
+      <label>Completed sets</label>
+      <input type="number" id="input-completed-sets" min="0">
+    </div>
+    <div class="field">
+      <label>Completed reps per set</label>
+      <input type="number" id="input-completed-reps" min="0">
+    </div>
+    <div class="field">
+      <label>RPE — how hard did it feel (1 easy – 10 max effort)</label>
+      <input type="range" id="input-rpe" min="1" max="10" step="0.5">
+      <div class="rpe-value" id="rpe-display">6</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btn-cancel-log">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-log">Save & adapt</button>
+    </div>
+  </div>
+</div>
+
+<div class="tabbar">
+  <button class="tab active">Today</button>
+  <button class="tab">Progress</button>
+  <button class="tab">Settings</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="adaptive.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

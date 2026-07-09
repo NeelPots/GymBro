@@ -1,0 +1,172 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #0A0B0D;
+  --surface: #15171A;
+  --surface-2: #1E2124;
+  --border: #26292E;
+  --text-primary: #F5F5F0;
+  --text-secondary: #9A9DA3;
+  --text-tertiary: #5C6066;
+  --signal: #FF4D2E;
+  --progress: #3ECF8E;
+  --deload: #FFB020;
+  --radius: 14px;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  padding-bottom: 84px;
+}
+
+.app { max-width: 640px; margin: 0 auto; padding: 20px 20px 40px; }
+
+/* ---------- Header ---------- */
+.app-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 24px 0 20px;
+}
+.app-header h1 {
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.app-header .streak {
+  font-family: var(--font-mono); font-size: 13px; color: var(--signal);
+}
+
+/* ---------- Signal strip (signature element) ---------- */
+.signal-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.signal-panel-label {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 12px;
+}
+.signal-wave {
+  width: 100%; height: 48px; margin-bottom: 14px;
+}
+.signal-wave path {
+  fill: none; stroke: var(--signal); stroke-width: 2;
+  filter: drop-shadow(0 0 6px rgba(255, 77, 46, 0.4));
+}
+.signal-feed { display: flex; flex-direction: column; gap: 10px; }
+.signal-item {
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: 13px; line-height: 1.5; color: var(--text-secondary);
+}
+.signal-dot {
+  width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+}
+.signal-dot.progress { background: var(--progress); box-shadow: 0 0 6px var(--progress); }
+.signal-dot.deload { background: var(--deload); box-shadow: 0 0 6px var(--deload); }
+.signal-dot.hold { background: var(--text-tertiary); }
+.signal-item strong { color: var(--text-primary); font-weight: 600; }
+
+/* ---------- Stat row ---------- */
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+}
+.stat-value {
+  font-family: var(--font-mono); font-size: 24px; font-weight: 600;
+}
+.stat-label {
+  font-size: 11px; color: var(--text-secondary); margin-top: 4px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+/* ---------- Session card ---------- */
+.session-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+}
+.session-card-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+}
+.session-card-header h2 {
+  font-family: var(--font-display); font-size: 17px; font-weight: 600;
+}
+.session-card-header .tag {
+  font-family: var(--font-mono); font-size: 11px; padding: 3px 8px;
+  border-radius: 6px; background: var(--surface-2); color: var(--text-secondary);
+}
+
+.movement-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-top: 1px solid var(--border);
+}
+.movement-row:first-of-type { border-top: none; }
+.movement-name { font-size: 14px; font-weight: 500; }
+.movement-target { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.movement-log-btn {
+  font-family: var(--font-mono); font-size: 12px; padding: 6px 12px;
+  border-radius: 8px; border: 1px solid var(--border); background: transparent;
+  color: var(--text-primary); cursor: pointer;
+}
+.movement-log-btn:active { background: var(--surface-2); }
+.movement-log-btn.done { border-color: var(--progress); color: var(--progress); }
+
+/* ---------- Chart panel ---------- */
+.chart-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+}
+.chart-panel h3 { font-family: var(--font-display); font-size: 15px; margin-bottom: 12px; }
+
+/* ---------- Log modal ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: flex-end; justify-content: center; z-index: 100;
+}
+.modal-overlay.hidden { display: none; }
+.modal-sheet {
+  background: var(--surface-2); border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 640px; padding: 24px 20px 32px;
+}
+.modal-sheet h3 { font-family: var(--font-display); font-size: 18px; margin-bottom: 18px; }
+.field { margin-bottom: 16px; }
+.field label {
+  display: block; font-size: 12px; color: var(--text-secondary);
+  margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.field input[type="number"], .field input[type="range"] {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px; color: var(--text-primary);
+  font-family: var(--font-mono); font-size: 15px;
+}
+.rpe-value { font-family: var(--font-mono); font-size: 20px; text-align: center; margin-top: 6px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 8px; }
+.btn {
+  flex: 1; padding: 13px; border-radius: 10px; border: none;
+  font-family: var(--font-body); font-weight: 600; font-size: 14px; cursor: pointer;
+}
+.btn-primary { background: var(--signal); color: #fff; }
+.btn-secondary { background: var(--surface); color: var(--text-secondary); border: 1px solid var(--border); }
+
+/* ---------- Nav ---------- */
+.tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(21,23,26,0.9); backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: center; gap: 40px; padding: 14px 0;
+}
+.tab { background: none; border: none; color: var(--text-tertiary); font-size: 11px; font-family: var(--font-mono); cursor: pointer; }
+.tab.active { color: var(--signal); }
+
+@media (min-width: 640px) {
+  .app { padding-top: 32px; }
+}
