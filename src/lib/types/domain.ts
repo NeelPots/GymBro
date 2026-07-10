@@ -25,3 +25,39 @@ export interface SignalItem {
   action: "progress" | "hold" | "deload";
   reason: string;
 }
+
+export interface PostAuthor {
+  id: string;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface Post {
+  id: string;
+  author: PostAuthor;
+  caption: string | null;
+  mediaUrl: string;
+  mediaType: "image" | "video";
+  createdAt: string;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
+}
+
+export interface Story {
+  id: string;
+  author: PostAuthor;
+  mediaUrl: string;
+  mediaType: "image" | "video";
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface Comment {
+  id: string;
+  postId: string;
+  author: PostAuthor;
+  body: string;
+  createdAt: string;
+}
