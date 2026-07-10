@@ -5,8 +5,10 @@ being rebuilt from a static prototype into a full product: an AI program
 builder, a shared and moderated exercise library with instructional media,
 and an in-app gym-community social feed.
 
-This README is both onboarding docs and the living roadmap. **Phases 0 and 1
-are done**; Phases 2-3 are designed but not yet built.
+This README is both onboarding docs and the living roadmap. **Phases 0-3 are
+all built** - what's left is a handful of real-world setup steps (below)
+that only you can do: adding your own API keys, running SQL migrations
+against your Supabase project, and configuring Google OAuth.
 
 ---
 
@@ -20,8 +22,12 @@ are done**; Phases 2-3 are designed but not yet built.
 - **AI program builder** — pick a goal or write a custom prompt and get a
   training program composed strictly from real exercises in the library
   (never invented ones).
-- Soon: a **community exercise library** anyone can contribute to
-  (AI-moderated), and a **social feed** for the gym-community side of things.
+- **Exercise library** — ~32 calisthenics + gym exercises, searchable and
+  filterable by category, each with step-by-step instructions and
+  easier/harder variations. Video demos are a content slot, not filled yet.
+- **Social feed** — an in-app, Instagram-style feed: posts, 24-hour stories,
+  likes, comments. Fully public (no followers model), gated behind sign-in.
+- **Google sign-in** on top of email/password, for the whole app.
 
 ## 🏗️ Architecture
 
@@ -47,11 +53,13 @@ are done**; Phases 2-3 are designed but not yet built.
 ```
 src/
   app/
-    (auth)/login, (auth)/signup        # Supabase email/password auth
+    (auth)/login, (auth)/signup        # Supabase email/password + Google OAuth
+    auth/callback                      # OAuth code-exchange route
     (app)/home                         # signal panel, today's targets, log-a-set
     (app)/train                        # AI program builder: goal picker + active program
+    (app)/exercises, (app)/exercises/[id]   # searchable library + exercise detail
     (app)/history                      # streak/compliance + volume chart
-    (app)/social                       # community feed (Phase 3 - placeholder)
+    (app)/social                       # Instagram-style feed (posts/stories/likes/comments)
     (app)/settings                     # sectioned preferences
     api/ai/generate-program            # AI program builder route handler
   components/
@@ -62,22 +70,30 @@ src/
     charts/        VolumeChart
     home/          ProfileCard (desktop right rail)
     train/         GoalPicker, ActiveProgramView, TrainView
+    exercises/     ExerciseCard, ExerciseLibraryView, ExerciseDetailView
+    social/        StoriesBar, PostCard, ComposerSheet, StoryViewer, SocialFeedView, AuthorAvatar
+    auth/          AuthForm, GoogleSignInButton
     settings/      SettingsRow, SettingsSection, SettingsActions
     shared/        NumberStepper, CircularProgress, ComingSoon, ServiceWorkerRegister
   lib/
-    adaptive/      engine.ts (the rule-based coach) + engine.test.ts + defaultExercises.ts
+    adaptive/      engine.ts (the rule-based coach) + engine.test.ts + defaultExercises.ts + planExercises.ts
     supabase/      client.ts, server.ts, proxy.ts, config.ts
     types/         database.types.ts, domain.ts
+    categoryIcon.ts, formatRelativeTime.ts
   services/
-    movements/     getExercises.ts (Supabase, falls back to local defaults)
+    movements/     getExercises.ts, getExerciseById.ts (Supabase, falls back to local defaults)
     ai/            types.ts, provider.ts, providers/anthropic.ts, generateProgram.ts (+ tests)
+    social/        getFeed.ts, getStories.ts (server), socialClient.ts (client: create/like/comment/delete)
   hooks/
     useLocalAdaptiveState.ts   # localStorage-backed logging state until accounts exist
     useLocalProgram.ts         # localStorage-backed AI-generated program
   proxy.ts         # Supabase auth session refresh (Next.js 16 renamed "middleware")
 supabase/
   migrations/0001_init.sql    # profiles, exercises, session_logs
+  migrations/0002_exercise_library.sql   # instructions/easier/harder/video_url columns
+  migrations/0003_social.sql             # posts/stories/post_likes/post_comments + storage bucket
   seed.sql                    # the 4 original default movements
+  seed_library.sql            # the full ~32-exercise library content
 legacy/adaptive-coach/         # the original static prototype, kept for reference
 ```
 
@@ -100,14 +116,32 @@ after this one):
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Copy `.env.local.example` to `.env.local` and fill in the project URL +
    anon key (Project Settings → API).
-3. Run the migration and seed against your project:
-   ```bash
-   npx supabase db push        # applies supabase/migrations/0001_init.sql
-   ```
-   then run `supabase/seed.sql` against your project (SQL editor or CLI).
-4. Restart `npm run dev`. Auth pages (`/login`, `/signup`) and Supabase-backed
-   exercise fetching will start working automatically — the app detects
-   whether Supabase is configured and falls back gracefully if not.
+3. Run each SQL file below against your project, in order, via the
+   **SQL Editor** in the Supabase dashboard (simplest - no service role key
+   needed on your machine):
+   - `supabase/migrations/0001_init.sql` then `supabase/seed.sql`
+   - `supabase/migrations/0002_exercise_library.sql` then `supabase/seed_library.sql`
+   - `supabase/migrations/0003_social.sql`
+4. Restart `npm run dev`. Auth pages (`/login`, `/signup`), Supabase-backed
+   exercise fetching, and the social feed will start working automatically —
+   the app detects whether Supabase is configured and falls back gracefully
+   if not.
+
+### Google sign-in
+
+The "Continue with Google" button and `/auth/callback` route are already
+built - Google sign-in itself needs two things only you can do:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+   create an **OAuth 2.0 Client ID** (Application type: Web application).
+   Set the **Authorized redirect URI** to:
+   `https://<your-project-ref>.supabase.co/auth/v1/callback`
+   (find `<your-project-ref>` in your Supabase project URL).
+2. In the Supabase dashboard: **Authentication → Providers → Google**,
+   paste in the Client ID and Client Secret from step 1, and enable it.
+
+No app code or env vars change - Supabase handles the OAuth exchange using
+the credentials you configure there.
 
 To use the **AI program builder** (`/train`), add an Anthropic API key —
 this is independent of Supabase, since generated programs are stored in
@@ -135,7 +169,7 @@ from the original prototype's identity, not an oversight.
 
 **Motion policy** (explicitly restrained — "clean, modern, not too much
 animation" was direct user feedback): Framer Motion is used *only* for the
-~180ms fade/slide between the four bottom-nav sections, and belongs nowhere
+~180ms fade/slide between the five bottom-nav sections, and belongs nowhere
 else by default. No hover-lift/tilt/glow, no stagger/parallax, no
 elastic/bounce easing anywhere in the app.
 
@@ -170,35 +204,49 @@ library — never freeform, always composed of real exercises by ID.
   it, `/train` still renders and explains what's missing rather than
   failing silently.
 
-### 📚 Phase 2 — Exercise Library, Submission & Moderation
-Anyone can submit a custom exercise; an AI moderation pass checks it's
-appropriate before it becomes visible to everyone else. Every exercise gets
-instructional media (short looping clip / image sequence) plus written
-instructions.
-- New tables: `exercise_media`, `moderation_queue`.
-- New service: `services/ai/moderateExercise` (pass/fail + reason).
-- New Supabase Storage bucket: `exercise-media`.
-- **Blockers:** sourcing/filming/generating instructional media for the
-  initial library; deciding whether moderation reviews media itself (vision)
-  or stays text-only.
+### ✅ Phase 2 — Exercise Library (done, minus real video)
+A searchable, filterable library (`/exercises`) of ~32 calisthenics + gym
+exercises across push/pull/legs/core, each with numbered step-by-step
+instructions and "make it easier" / "make it harder" variation cards.
+- `exercises` table extended with `instructions`, `easier_variation`,
+  `harder_variation`, `video_url` (`0002_exercise_library.sql` +
+  `seed_library.sql`); the same content is mirrored in
+  `defaultExercises.ts` so local mode gets the full library too.
+- **Not done, on purpose:** real demo videos. `video_url` is a real schema
+  column that renders as an embedded video when present, but every exercise
+  currently shows a "demo video coming soon" placeholder - filming/licensing
+  footage is a content task, not a code task. Add a video by setting that
+  column (or the local fallback's `videoUrl` field) to a real embed URL.
+- User-submitted exercises + AI moderation (the `moderation_status`/
+  `submitted_by` columns already exist from Phase 0) is still unbuilt -
+  the library is currently system-curated only.
 
-### 📱 Phase 3 — Social Feed
-An in-app, Instagram/Facebook-inspired feed — posts, 24-hour stories, likes,
-comments — for the gym-community side of the app. Not connected to real
-Instagram/Facebook (that's an explicit later step, not this one).
-- New tables: `posts`, `stories`, `post_likes`, `post_comments`.
-- New Supabase Storage bucket: `social-media`.
-- **Open decision to make before building:** fully public feed vs. a
-  followers model.
+### ✅ Phase 3 — Social Feed (done, needs a real account to fully test)
+An in-app, Instagram-style feed — posts, 24-hour stories, likes, comments -
+gated behind sign-in, fully public (no followers model).
+- New tables: `posts`, `stories`, `post_likes`, `post_comments`
+  (`0003_social.sql`), plus a public `social-media` storage bucket scoped so
+  users can only write under their own `auth.uid()` folder.
+- `/social` has three states: Supabase not configured → setup message;
+  configured but signed out → a "join the community" prompt; signed in → the
+  real feed.
+- **Verified:** the signed-out prompt. **Not yet exercised end-to-end** with
+  a real account (needs either email confirmation, which was rate-limited
+  during development, or Google sign-in once configured) - the code path,
+  types, and RLS policies are all in place and build cleanly, but posting/
+  liking/commenting should get a real click-through once you can sign in.
 
 ### 🔮 Future (flagged, not scheduled)
 - **Wearable / device integration** — auto-detecting a completed set or a
   finished rest timer from a wristband or other paired device. This is a
   real, intended direction for the app, just not an active phase yet.
+- Real exercise demo videos (see Phase 2) and user-submitted exercises with
+  AI moderation.
 - Native App Store / Play Store builds (currently: installable PWA only).
 - Real Instagram/Facebook integration (currently: in-app feed only).
 - A second AI provider (the seam already exists - Phase 1 just needs a new
   `services/ai/providers/*.ts` file).
+- A followers model for the social feed (currently fully public).
 
 ## 🧪 Testing
 
