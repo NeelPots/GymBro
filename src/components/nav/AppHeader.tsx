@@ -3,7 +3,7 @@ import { Settings } from "lucide-react";
 
 export function AppHeader() {
   return (
-    <header className="flex items-center justify-between px-5 pt-6 pb-2 sm:px-0 sm:pt-8">
+    <header className="flex items-center justify-between px-5 pt-6 pb-2 sm:px-0 sm:pt-8 lg:hidden">
       <h1 className="font-display text-[22px] font-bold tracking-tight">Adaptive Coach</h1>
       <Link
         href="/settings"

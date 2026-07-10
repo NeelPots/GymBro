@@ -1,36 +1,57 @@
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { SettingsActions } from "@/components/settings/SettingsActions";
+import { SettingsRow, SettingsSection } from "@/components/settings/SettingsRow";
 
 export default function SettingsPage() {
   return (
-    <div className="flex flex-col gap-4 pt-2">
-      <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
-        <h2 className="font-display text-[17px] font-semibold">Account</h2>
-        {isSupabaseConfigured ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Connected to Supabase.{" "}
-            <Link href="/login" className="text-signal underline-offset-4 hover:underline">
-              Sign in
-            </Link>{" "}
-            to sync your data across devices.
-          </p>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Running in local mode - your data stays on this device only. Connect a Supabase
-            project (see <code className="font-mono text-xs">.env.local.example</code>) to enable
-            accounts, sync, and the features planned for later phases.
-          </p>
-        )}
+    <div className="flex flex-col gap-5 pt-2">
+      <div>
+        <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-signal">
+          Settings
+        </div>
+        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight">Preferences</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage your account, appearance, and local data.
+        </p>
       </div>
 
-      <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
-        <h2 className="font-display text-[17px] font-semibold">Local data</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your movements, logs, and streaks are stored in this browser&apos;s local storage.
-        </p>
-        <SettingsActions />
-      </div>
+      <SettingsSection label="Account">
+        {isSupabaseConfigured ? (
+          <SettingsRow
+            label="Connected to Supabase"
+            description="Sign in to sync your data across devices."
+            control={
+              <Link href="/login" className="text-sm font-medium text-signal underline-offset-4 hover:underline">
+                Sign in
+              </Link>
+            }
+          />
+        ) : (
+          <SettingsRow
+            label="Local mode"
+            description="Connect a Supabase project (.env.local.example) to enable accounts and sync."
+            control={<Badge variant="outline">Not connected</Badge>}
+          />
+        )}
+      </SettingsSection>
+
+      <SettingsSection label="Appearance">
+        <SettingsRow
+          label="Theme"
+          description="Adaptive Coach is dark-first by design - no light theme yet."
+          control={<Badge variant="secondary">Dark</Badge>}
+        />
+      </SettingsSection>
+
+      <SettingsSection label="Local data">
+        <SettingsRow
+          label="Stored on this device"
+          description="Movements, logs, and streaks live in this browser's local storage."
+          control={<SettingsActions />}
+        />
+      </SettingsSection>
     </div>
   );
 }

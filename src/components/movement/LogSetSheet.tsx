@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2, Circle, Minus, Plus } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,8 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { NumberStepper } from "@/components/shared/NumberStepper";
+import { cn } from "@/lib/utils";
 import type { MovementParams } from "@/lib/adaptive/engine";
+
+interface SetRow {
+  reps: number;
+  done: boolean;
+}
 
 interface LogSetSheetProps {
   open: boolean;
@@ -22,15 +28,35 @@ interface LogSetSheetProps {
   onSave: (completedReps: number, completedSets: number, rpe: number) => void;
 }
 
+function seedRows(params: MovementParams | null): SetRow[] {
+  if (!params) return [];
+  return Array.from({ length: params.sets }, () => ({ reps: params.reps, done: false }));
+}
+
 /**
  * The parent should render this with `key={exerciseId}` so switching to a
  * different movement remounts the sheet with fresh initial values, instead
  * of syncing local state to the `params` prop via an effect.
+ *
+ * Logs set-by-set (a row per prescribed set, tap to check off, adjustable
+ * reps per row) rather than one aggregate reps/sets pair - it's the
+ * lifting-log convention (Strong/Hevy/Lyfta) and reads far less abstract
+ * than "how many sets did you do" after the fact. Still collapses to the
+ * same aggregate (completedReps, completedSets, rpe) the adaptive engine
+ * expects, so no data-model change was needed to support it.
  */
 export function LogSetSheet({ open, onOpenChange, movementName, params, onSave }: LogSetSheetProps) {
-  const [completedReps, setCompletedReps] = useState(params?.reps ?? 0);
-  const [completedSets, setCompletedSets] = useState(params?.sets ?? 0);
+  const [rows, setRows] = useState<SetRow[]>(() => seedRows(params));
   const [rpe, setRpe] = useState(6);
+
+  const doneRows = rows.filter((r) => r.done);
+  const completedSets = doneRows.length;
+  const completedReps =
+    doneRows.length === 0 ? 0 : Math.round(doneRows.reduce((sum, r) => sum + r.reps, 0) / doneRows.length);
+
+  function updateRow(index: number, patch: Partial<SetRow>) {
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -42,16 +68,67 @@ export function LogSetSheet({ open, onOpenChange, movementName, params, onSave }
         <div className="flex flex-col gap-4 px-0">
           <div>
             <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">
-              Completed sets
+              Sets
             </Label>
-            <NumberStepper value={completedSets} onChange={setCompletedSets} min={0} />
-          </div>
-
-          <div>
-            <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">
-              Completed reps per set
-            </Label>
-            <NumberStepper value={completedReps} onChange={setCompletedReps} min={0} />
+            <div className="flex flex-col gap-2">
+              {rows.map((row, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex items-center gap-3 rounded-[10px] border px-3 py-2 transition-colors",
+                    row.done ? "border-progress/40 bg-progress/10" : "border-border bg-surface",
+                  )}
+                >
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-2 font-mono text-[11px] text-muted-foreground">
+                    {i + 1}
+                  </span>
+                  <div className="flex flex-1 items-center justify-between">
+                    <span className="font-mono text-xs text-muted-foreground">reps</span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => updateRow(i, { reps: Math.max(0, row.reps - 1) })}
+                        aria-label="Decrease reps"
+                      >
+                        <Minus size={13} />
+                      </Button>
+                      <span className="w-6 text-center font-mono text-sm font-semibold tabular-nums">
+                        {row.reps}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => updateRow(i, { reps: row.reps + 1 })}
+                        aria-label="Increase reps"
+                      >
+                        <Plus size={13} />
+                      </Button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => updateRow(i, { done: !row.done })}
+                    aria-label={row.done ? "Mark set as not done" : "Mark set as done"}
+                    className={cn(
+                      "shrink-0 transition-colors",
+                      row.done ? "text-progress" : "text-subtle hover:text-muted-foreground",
+                    )}
+                  >
+                    {row.done ? <CheckCircle2 size={22} /> : <Circle size={22} />}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setRows((prev) => [...prev, { reps: params?.reps ?? 0, done: false }])}
+              className="mt-2 w-full rounded-[10px] border border-dashed border-border py-2 font-mono text-xs text-muted-foreground transition-colors hover:border-signal/40 hover:text-signal"
+            >
+              + Add set
+            </button>
           </div>
 
           <div>
