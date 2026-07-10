@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 const QUOTES = [
   "Every rep writes your next level.",
@@ -13,6 +14,20 @@ const QUOTES = [
   "Consistency is the real cheat code.",
   "Your next rank is being decided today.",
   "Show up. Level up.",
+  "Strong is a habit, not a mood.",
+  "Earn it before you post it.",
+  "Comfort is where progress goes to stall.",
+  "One more rep than yesterday.",
+  "Rank-ups are just receipts for reps.",
+  "Nobody regrets the workout they finished.",
+  "Momentum is built, not found.",
+  "Train like the streak is watching.",
+  "Effort compounds. So does avoidance.",
+  "Your body keeps the score. Keep it honest.",
+  "Hard sets. Easy conscience.",
+  "Progress hides inside boring, repeated work.",
+  "Today's rep is tomorrow's rank.",
+  "Discipline outlasts motivation every time.",
 ];
 
 function FlexFigure({ className }: { className?: string }) {
@@ -70,37 +85,62 @@ interface Band {
 }
 
 const BANDS: Band[] = [
-  { top: "6%", rotate: "-4deg", tone: "signal" },
-  { top: "46%", rotate: "3deg", tone: "progress" },
-  { top: "86%", rotate: "-3deg", tone: "signal" },
+  { top: "4%", rotate: "-4deg", tone: "signal" },
+  { top: "26%", rotate: "3deg", tone: "progress" },
+  { top: "50%", rotate: "-3deg", tone: "signal" },
+  { top: "72%", rotate: "4deg", tone: "progress" },
+  { top: "93%", rotate: "-3deg", tone: "signal" },
 ];
+
+/** Simple deterministic string hash so each route shows a different, stable slice of the quote pool. */
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function pickQuotes(pathname: string, dayIndex: number): string[] {
+  const base = hashString(pathname) + dayIndex;
+  return BANDS.map((_, i) => QUOTES[(base + i * 5) % QUOTES.length]);
+}
 
 /**
  * A fixed, viewport-pinned backdrop shared by the whole app shell (see
  * (app)/layout.tsx) - not per-page content, so it stays visible in whatever
  * margin/gutter space exists around the real UI regardless of which page or
- * how far down it's scrolled, rather than scrolling away with the content
- * column (which is what made the previous in-flow banner attempt either
- * invisible-behind-cards or too disruptive). Two illustrated athletic
- * silhouettes anchor the corners; a few low-opacity diagonal quote bands
- * fill the rest. Everything here is decorative: pointer-events-none,
- * aria-hidden, and z-indexed behind the whole app shell.
+ * how far down it's scrolled. Which quotes show is derived from the route
+ * plus the current date, so different pages show different slices of the
+ * pool (not just the same handful everywhere) while staying stable within
+ * a single visit - no flicker, no layout thrash.
+ *
+ * Deliberately NOT wider than the viewport in any way that could affect
+ * document scroll: this is `fixed` + `overflow-hidden` + capped to 100vw
+ * explicitly, so its rotated children (which do extend past their own
+ * edges for the diagonal effect) can never contribute to page-level
+ * horizontal scroll regardless of browser/zoom quirks.
  */
 export function MotivationalBackdrop() {
-  const [quotes, setQuotes] = useState(() => [QUOTES[0], QUOTES[4], QUOTES[7]]);
+  const pathname = usePathname();
+  const [quotes, setQuotes] = useState(() => pickQuotes(pathname ?? "/", 0));
 
   useEffect(() => {
     const dayIndex = Math.floor(Date.now() / 86400000);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setQuotes([QUOTES[dayIndex % QUOTES.length], QUOTES[(dayIndex + 4) % QUOTES.length], QUOTES[(dayIndex + 7) % QUOTES.length]]);
-  }, []);
+    setQuotes(pickQuotes(pathname ?? "/", dayIndex));
+  }, [pathname]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      style={{ width: "100vw", maxWidth: "100vw" }}
+      aria-hidden="true"
+    >
       {BANDS.map((band, i) => (
         <div
           key={i}
-          className="absolute left-1/2 w-[150%] -translate-x-1/2"
+          className="absolute left-1/2 w-[118%] -translate-x-1/2"
           style={{ top: band.top, transform: `translateX(-50%) rotate(${band.rotate})` }}
         >
           <div
