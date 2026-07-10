@@ -1,13 +1,15 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { VolumeChart } from "@/components/charts/VolumeChart";
 import { CircularProgress } from "@/components/shared/CircularProgress";
 import { useLocalAdaptiveState } from "@/hooks/useLocalAdaptiveState";
 import type { Exercise } from "@/lib/types/domain";
 
 export function HistoryView({ exercises }: { exercises: Exercise[] }) {
-  const { state, isLoading, streak, weekCompletion } = useLocalAdaptiveState(exercises);
+  const { state, isLoading, streak, weekCompletion, deleteSession } = useLocalAdaptiveState(exercises);
 
   if (isLoading || !state) {
     return (
@@ -44,13 +46,24 @@ export function HistoryView({ exercises }: { exercises: Exercise[] }) {
           <div className="flex flex-col">
             {recentLogs.map((log, i) => (
               <div
-                key={`${log.date}-${log.exerciseId}-${i}`}
-                className={`flex items-center justify-between py-2.5 text-sm ${i === 0 ? "" : "border-t border-border"}`}
+                key={log.id}
+                className={`flex items-center justify-between gap-2 py-2.5 text-sm ${i === 0 ? "" : "border-t border-border"}`}
               >
                 <span className="text-foreground">{names[log.exerciseId] ?? log.exerciseId}</span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {log.date} · RPE {log.avgRpe}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {log.date} · RPE {log.avgRpe}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="Delete this session"
+                    onClick={() => deleteSession(log.exerciseId, log.id)}
+                    className="text-subtle hover:text-deload"
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

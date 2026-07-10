@@ -1,11 +1,11 @@
-# 🏋️ Adaptive Coach
+# 🏋️ GymBro
 
 A calisthenics training app that adjusts to how you're actually performing —
 being rebuilt from a static prototype into a full product: an AI program
 builder, a shared and moderated exercise library with instructional media,
 and an in-app gym-community social feed.
 
-This README is both onboarding docs and the living roadmap. **Phases 0-3 are
+This README is both onboarding docs and the living roadmap. **Phases 0-4 are
 all built** - what's left is a handful of real-world setup steps (below)
 that only you can do: adding your own API keys, running SQL migrations
 against your Supabase project, and configuring Google OAuth.
@@ -22,11 +22,17 @@ against your Supabase project, and configuring Google OAuth.
 - **AI program builder** — pick a goal or write a custom prompt and get a
   training program composed strictly from real exercises in the library
   (never invented ones).
-- **Exercise library** — ~32 calisthenics + gym exercises, searchable and
-  filterable by category, each with step-by-step instructions and
-  easier/harder variations. Video demos are a content slot, not filled yet.
+- **Custom workout splits** — build your own named training days (e.g. "Push
+  Day"), each with its own exercises/sets/reps, and activate one as today's
+  plan - an alternative to the AI builder that drives Home the same way.
+- **Exercise library** — ~82 calisthenics + gym exercises across 7 categories
+  (push/pull/legs/shoulders/arms/core/cardio), searchable and filterable,
+  each with step-by-step instructions, easier/harder variations, and a
+  looping illustrative pictogram (real video takes priority when set).
 - **Social feed** — an in-app, Instagram-style feed: posts, 24-hour stories,
-  likes, comments. Fully public (no followers model), gated behind sign-in.
+  likes, comments, a filter + draggable-text post/story editor, and a
+  "share your PR" prompt whenever the adaptive engine detects real progress.
+  Fully public (no followers model), gated behind sign-in.
 - **Google sign-in** on top of email/password, for the whole app.
 
 ## 🏗️ Architecture
@@ -69,14 +75,14 @@ src/
     movement/      MovementTile, LogSetSheet (per-set checklist)
     charts/        VolumeChart
     home/          ProfileCard (desktop right rail)
-    train/         GoalPicker, ActiveProgramView, TrainView
-    exercises/     ExerciseCard, ExerciseLibraryView, ExerciseDetailView
-    social/        StoriesBar, PostCard, ComposerSheet, StoryViewer, SocialFeedView, AuthorAvatar
+    train/         GoalPicker, ActiveProgramView, TrainView, SplitsView, SplitDayCard, SplitDayEditorSheet
+    exercises/     ExerciseCard, ExerciseLibraryView, ExerciseDetailView, CategoryAnimation
+    social/        StoriesBar, PostCard, ComposerSheet, PostEditor, StoryViewer, SocialFeedView, AuthorAvatar
     auth/          AuthForm, GoogleSignInButton
     settings/      SettingsRow, SettingsSection, SettingsActions
     shared/        NumberStepper, CircularProgress, ComingSoon, ServiceWorkerRegister
   lib/
-    adaptive/      engine.ts (the rule-based coach) + engine.test.ts + defaultExercises.ts + planExercises.ts
+    adaptive/      engine.ts (the rule-based coach) + engine.test.ts + defaultExercises.ts + planExercises.ts + activePlan.ts
     supabase/      client.ts, server.ts, proxy.ts, config.ts
     types/         database.types.ts, domain.ts
     categoryIcon.ts, formatRelativeTime.ts
@@ -85,15 +91,18 @@ src/
     ai/            types.ts, provider.ts, providers/anthropic.ts, generateProgram.ts (+ tests)
     social/        getFeed.ts, getStories.ts (server), socialClient.ts (client: create/like/comment/delete)
   hooks/
-    useLocalAdaptiveState.ts   # localStorage-backed logging state until accounts exist
+    useLocalAdaptiveState.ts   # localStorage-backed logging state (with per-set delete) until accounts exist
     useLocalProgram.ts         # localStorage-backed AI-generated program
+    useLocalSplit.ts           # localStorage-backed custom workout-split days
+    useActivePlanSource.ts     # which of AI program / split / default currently drives Home
   proxy.ts         # Supabase auth session refresh (Next.js 16 renamed "middleware")
 supabase/
   migrations/0001_init.sql    # profiles, exercises, session_logs
   migrations/0002_exercise_library.sql   # instructions/easier/harder/video_url columns
   migrations/0003_social.sql             # posts/stories/post_likes/post_comments + storage bucket
   seed.sql                    # the 4 original default movements
-  seed_library.sql            # the full ~32-exercise library content
+  seed_library.sql            # the original ~32-exercise library content
+  seed_library_2.sql          # Phase 4: ~50 more exercises + shoulders/arms/cardio categories
 legacy/adaptive-coach/         # the original static prototype, kept for reference
 ```
 
@@ -122,6 +131,8 @@ after this one):
    - `supabase/migrations/0001_init.sql` then `supabase/seed.sql`
    - `supabase/migrations/0002_exercise_library.sql` then `supabase/seed_library.sql`
    - `supabase/migrations/0003_social.sql`
+   - `supabase/seed_library_2.sql` (Phase 4's ~50 additional exercises + the
+     shoulders/arms/cardio categories - no new migration needed, same table)
 4. Restart `npm run dev`. Auth pages (`/login`, `/signup`), Supabase-backed
    exercise fetching, and the social feed will start working automatically —
    the app detects whether Supabase is configured and falls back gracefully
@@ -171,7 +182,10 @@ from the original prototype's identity, not an oversight.
 animation" was direct user feedback): Framer Motion is used *only* for the
 ~180ms fade/slide between the five bottom-nav sections, and belongs nowhere
 else by default. No hover-lift/tilt/glow, no stagger/parallax, no
-elastic/bounce easing anywhere in the app.
+elastic/bounce easing anywhere in the app. The one deliberate exception is
+`CategoryAnimation` on the exercise detail page - a small looping CSS
+pictogram that fills the "demo video" slot when no `video_url` is set; it's
+scoped to that one illustrative slot, not a change to the wider policy.
 
 ## 🗺️ Roadmap
 
@@ -208,15 +222,17 @@ library — never freeform, always composed of real exercises by ID.
 A searchable, filterable library (`/exercises`) of ~32 calisthenics + gym
 exercises across push/pull/legs/core, each with numbered step-by-step
 instructions and "make it easier" / "make it harder" variation cards.
+Expanded further in Phase 4 below.
 - `exercises` table extended with `instructions`, `easier_variation`,
   `harder_variation`, `video_url` (`0002_exercise_library.sql` +
   `seed_library.sql`); the same content is mirrored in
   `defaultExercises.ts` so local mode gets the full library too.
 - **Not done, on purpose:** real demo videos. `video_url` is a real schema
-  column that renders as an embedded video when present, but every exercise
-  currently shows a "demo video coming soon" placeholder - filming/licensing
-  footage is a content task, not a code task. Add a video by setting that
-  column (or the local fallback's `videoUrl` field) to a real embed URL.
+  column that renders as an embedded video when present; every exercise
+  without one shows a looping illustrative pictogram instead (see Phase 4) -
+  filming/licensing real footage is still a content task, not a code task.
+  Add a video by setting that column (or the local fallback's `videoUrl`
+  field) to a real embed URL.
 - User-submitted exercises + AI moderation (the `moderation_status`/
   `submitted_by` columns already exist from Phase 0) is still unbuilt -
   the library is currently system-curated only.
@@ -235,6 +251,43 @@ gated behind sign-in, fully public (no followers model).
   during development, or Google sign-in once configured) - the code path,
   types, and RLS policies are all in place and build cleanly, but posting/
   liking/commenting should get a real click-through once you can sign in.
+
+### ✅ Phase 4 — GymBro rebrand, bigger library, splits, and social editor (done)
+- **Rebrand:** display name changed to GymBro across the header, sidebar,
+  auth pages, manifest, and this README (internal package/folder names stay
+  `adaptive-coach` - no reason to churn those).
+- **Bigger library:** ~50 more exercises (`seed_library_2.sql`, mirrored in
+  `defaultExercises.ts`) plus three new categories - shoulders, arms,
+  cardio - alongside the original push/pull/legs/core.
+- **Category pictograms:** `CategoryAnimation` - a small looping CSS/SVG
+  stick-figure animation, one consistent style per category, filling the
+  demo slot on the exercise detail page whenever no real `video_url` is set.
+- **Custom workout splits:** build named training days (e.g. "Push Day")
+  with your own exercises/sets/reps via `useLocalSplit` (localStorage,
+  mirrors `useLocalProgram`'s pattern), from a new "My Splits" tab on
+  `/train` next to "AI Coach". Activating either a split day or an AI
+  program updates a `planSource` pointer (`useActivePlanSource`); `activePlan.ts`
+  resolves whichever was most recently activated into "today's plan" on
+  Home, falling back to the default library if that source is later cleared.
+- **Delete a logged set:** session/history entries now carry a stable `id`;
+  `useLocalAdaptiveState.deleteSession(exerciseId, id)` removes one from both
+  the per-exercise history and the flat session log, with a trash button on
+  each row in History → Recent sessions.
+- **Social - share your PR:** logging a set that the adaptive engine scores
+  as `"progress"` (a genuine improvement, the engine's existing signal) shows
+  a toast with a **Share 🎉** action, deep-linking to `/social?share=...`
+  which auto-opens the composer pre-filled with a caption.
+- **Social - post/story editor:** `PostEditor` adds filter presets (mono,
+  warm, cool, vivid, fade) and a draggable, recolorable text overlay to the
+  composer; on Share, the chosen filter and text are flattened onto the
+  image via an offscreen canvas (`drawImage` + `ctx.filter` + `fillText` +
+  `toBlob()`) so the edits are baked into the uploaded file, not just stored
+  as metadata.
+- **Not yet exercised end-to-end:** the post editor and share-a-PR deep link
+  need a real signed-in account to click through fully (same Phase 3
+  limitation) - the share toast → `/social?share=...` navigation is verified
+  working for signed-out users too (falls back to the sign-in prompt without
+  breaking), but posting with an edited image needs a real login to confirm.
 
 ### 🔮 Future (flagged, not scheduled)
 - **Wearable / device integration** — auto-detecting a completed set or a

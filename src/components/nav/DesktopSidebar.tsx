@@ -16,7 +16,7 @@ export function DesktopSidebar() {
         <div className="flex size-8 items-center justify-center rounded-lg bg-signal/10 text-signal ring-1 ring-signal/30">
           <Activity size={16} strokeWidth={2.25} />
         </div>
-        <span className="font-display text-[15px] font-bold tracking-tight">Adaptive Coach</span>
+        <span className="font-display text-[15px] font-bold tracking-tight">GymBro</span>
       </Link>
 
       <nav className="flex flex-1 flex-col gap-1">

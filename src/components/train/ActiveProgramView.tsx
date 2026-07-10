@@ -14,9 +14,17 @@ interface ActiveProgramViewProps {
   program: LocalProgram;
   exercises: Exercise[];
   onGenerateNew: () => void;
+  isActive: boolean;
+  onActivate: () => void;
 }
 
-export function ActiveProgramView({ program, exercises, onGenerateNew }: ActiveProgramViewProps) {
+export function ActiveProgramView({
+  program,
+  exercises,
+  onGenerateNew,
+  isActive,
+  onActivate,
+}: ActiveProgramViewProps) {
   const programExercises = resolvePlanExercises(program, exercises);
 
   const { state, isLoading, logSession } = useLocalAdaptiveState(programExercises);
@@ -41,9 +49,19 @@ export function ActiveProgramView({ program, exercises, onGenerateNew }: ActiveP
       <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="font-display text-[15px] font-semibold">Your program</h3>
-          <span className="rounded-md bg-surface-2 px-2 py-0.75 font-mono text-[11px] text-muted-foreground">
-            now on Home
-          </span>
+          {isActive ? (
+            <span className="rounded-md bg-surface-2 px-2 py-0.75 font-mono text-[11px] text-muted-foreground">
+              now on Home
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onActivate}
+              className="rounded-md bg-signal/10 px-2 py-0.75 font-mono text-[11px] text-signal transition-colors hover:bg-signal/20"
+            >
+              use on Home
+            </button>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {programExercises.map((exercise) => (

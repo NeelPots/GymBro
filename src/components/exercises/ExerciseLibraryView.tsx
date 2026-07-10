@@ -11,7 +11,10 @@ const CATEGORIES = [
   { value: "push", label: "Push" },
   { value: "pull", label: "Pull" },
   { value: "legs", label: "Legs" },
+  { value: "shoulders", label: "Shoulders" },
+  { value: "arms", label: "Arms" },
   { value: "core", label: "Core" },
+  { value: "cardio", label: "Cardio" },
 ];
 
 export function ExerciseLibraryView({ exercises }: { exercises: Exercise[] }) {

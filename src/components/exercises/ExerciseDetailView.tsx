@@ -1,6 +1,7 @@
-import { ArrowDown, ArrowUp, Video } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { categoryIcon, DEFAULT_CATEGORY_ICON } from "@/lib/categoryIcon";
 import { Badge } from "@/components/ui/badge";
+import { CategoryAnimation } from "./CategoryAnimation";
 import type { Exercise } from "@/lib/types/domain";
 
 function VideoEmbed({ videoUrl }: { videoUrl: string }) {
@@ -45,10 +46,7 @@ export function ExerciseDetailView({ exercise }: { exercise: Exercise }) {
         {exercise.videoUrl ? (
           <VideoEmbed videoUrl={exercise.videoUrl} />
         ) : (
-          <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border text-muted-foreground">
-            <Video size={22} />
-            <span className="text-sm">Demo video coming soon</span>
-          </div>
+          <CategoryAnimation category={exercise.category} />
         )}
       </div>
 

@@ -40,7 +40,7 @@ export default function SettingsPage() {
       <SettingsSection label="Appearance">
         <SettingsRow
           label="Theme"
-          description="Adaptive Coach is dark-first by design - no light theme yet."
+          description="GymBro is dark-first by design - no light theme yet."
           control={<Badge variant="secondary">Dark</Badge>}
         />
       </SettingsSection>

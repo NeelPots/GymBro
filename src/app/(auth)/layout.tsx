@@ -23,7 +23,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="flex size-12 items-center justify-center rounded-2xl bg-signal/10 text-signal ring-1 ring-signal/30">
             <Activity size={22} strokeWidth={2.25} />
           </div>
-          <span className="font-display text-lg font-bold tracking-tight">Adaptive Coach</span>
+          <span className="font-display text-lg font-bold tracking-tight">GymBro</span>
         </div>
         <div className="rounded-[var(--radius)] border border-border bg-surface p-6 shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
           {children}

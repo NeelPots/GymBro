@@ -7,7 +7,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getFeed } from "@/services/social/getFeed";
 import { getStories } from "@/services/social/getStories";
 
-export default async function SocialPage() {
+export default async function SocialPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ share?: string }>;
+}) {
+  const { share } = await searchParams;
   if (!isSupabaseConfigured) {
     return (
       <div className="pt-2">
@@ -64,5 +69,12 @@ export default async function SocialPage() {
 
   const [posts, stories] = await Promise.all([getFeed(), getStories()]);
 
-  return <SocialFeedView initialPosts={posts} initialStories={stories} currentUserId={user.id} />;
+  return (
+    <SocialFeedView
+      initialPosts={posts}
+      initialStories={stories}
+      currentUserId={user.id}
+      initialShareCaption={share}
+    />
+  );
 }

@@ -7,18 +7,51 @@ import type { Exercise, SignalItem } from "@/lib/types/domain";
 const STORAGE_KEY = "adaptive-coach-state-v2";
 
 interface SessionLogEntry {
+  id: string;
   date: string;
   exerciseId: string;
   avgRpe: number;
 }
 
+// A stable id per logged set, so a single entry can be found and deleted
+// from both `history` (per exercise, feeds the adaptive engine) and
+// `sessionLog` (flat, feeds streak/stats) without the two ever drifting
+// out of sync.
+interface HistoryEntry extends SessionEntry {
+  id: string;
+}
+
 interface LocalState {
   movements: Record<string, MovementParams>;
-  history: Record<string, SessionEntry[]>;
+  history: Record<string, HistoryEntry[]>;
   sessionLog: SessionLogEntry[];
   lastSignal: SignalItem[];
   streak: number;
   weekCompletion: number;
+}
+
+/**
+ * Entries saved before ids existed won't have one. history[exerciseId] and
+ * sessionLog (filtered to that exerciseId) were always appended together
+ * 1:1 in logSession, so pairing them by index within each exerciseId is
+ * exact, not a heuristic.
+ */
+function migrateIds(parsed: LocalState): LocalState {
+  const history: Record<string, HistoryEntry[]> = {};
+  for (const [exerciseId, entries] of Object.entries(parsed.history)) {
+    history[exerciseId] = entries.map((e) => ({ ...e, id: e.id ?? crypto.randomUUID() }));
+  }
+
+  const cursor: Record<string, number> = {};
+  const sessionLog = parsed.sessionLog.map((s) => {
+    if (s.id) return s;
+    const index = cursor[s.exerciseId] ?? 0;
+    cursor[s.exerciseId] = index + 1;
+    const id = history[s.exerciseId]?.[index]?.id ?? crypto.randomUUID();
+    return { ...s, id };
+  });
+
+  return { ...parsed, history, sessionLog };
 }
 
 function computeStreak(sessionLog: SessionLogEntry[]): number {
@@ -68,7 +101,7 @@ function loadState(exercises: Exercise[]): LocalState {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (raw) {
     try {
-      const parsed = JSON.parse(raw) as LocalState;
+      const parsed = migrateIds(JSON.parse(raw) as LocalState);
       // Merge in any exercises added to the library since last visit.
       for (const e of exercises) {
         if (!parsed.movements[e.id]) {
@@ -110,8 +143,10 @@ export function useLocalAdaptiveState(exercises: Exercise[]) {
         if (!prev) return prev;
         const params = prev.movements[exerciseId];
         const today = new Date().toISOString().slice(0, 10);
+        const id = crypto.randomUUID();
 
-        const entry: SessionEntry = {
+        const entry: HistoryEntry = {
+          id,
           date: today,
           targetReps: params.reps,
           targetSets: params.sets,
@@ -124,7 +159,7 @@ export function useLocalAdaptiveState(exercises: Exercise[]) {
         const result = evaluateMovement(history[exerciseId], params);
         const movements = { ...prev.movements, [exerciseId]: result.newParams };
 
-        const sessionLog = [...prev.sessionLog, { date: today, exerciseId, avgRpe: rpe }];
+        const sessionLog = [...prev.sessionLog, { id, date: today, exerciseId, avgRpe: rpe }];
 
         const exerciseName = exercises.find((e) => e.id === exerciseId)?.name ?? exerciseId;
         const lastSignal = [
@@ -140,10 +175,27 @@ export function useLocalAdaptiveState(exercises: Exercise[]) {
     [exercises],
   );
 
+  const deleteSession = useCallback((exerciseId: string, id: string) => {
+    setState((prev) => {
+      if (!prev) return prev;
+
+      const history = {
+        ...prev.history,
+        [exerciseId]: (prev.history[exerciseId] ?? []).filter((e) => e.id !== id),
+      };
+      const sessionLog = prev.sessionLog.filter((s) => s.id !== id);
+
+      const next = withDerived({ movements: prev.movements, history, sessionLog, lastSignal: prev.lastSignal });
+      saveState(next);
+      return next;
+    });
+  }, []);
+
   return {
     state,
     isLoading: state === null,
     logSession,
+    deleteSession,
     streak: state?.streak ?? 0,
     weekCompletion: state?.weekCompletion ?? 0,
   };

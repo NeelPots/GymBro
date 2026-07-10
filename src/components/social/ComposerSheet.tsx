@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -14,20 +14,29 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { createPost, createStory } from "@/services/social/socialClient";
+import { PostEditor, type PostEditorHandle } from "./PostEditor";
 
 interface ComposerSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultType?: "post" | "story";
+  initialCaption?: string;
   onShared: () => void;
 }
 
-export function ComposerSheet({ open, onOpenChange, defaultType = "post", onShared }: ComposerSheetProps) {
+export function ComposerSheet({
+  open,
+  onOpenChange,
+  defaultType = "post",
+  initialCaption,
+  onShared,
+}: ComposerSheetProps) {
   const [type, setType] = useState<"post" | "story">(defaultType);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [caption, setCaption] = useState("");
+  const [caption, setCaption] = useState(initialCaption ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const editorRef = useRef<PostEditorHandle>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] ?? null;
@@ -48,10 +57,13 @@ export function ComposerSheet({ open, onOpenChange, defaultType = "post", onShar
     }
     setIsSubmitting(true);
     try {
+      const editedBlob = await editorRef.current?.exportBlob();
+      const upload = editedBlob ? new File([editedBlob], file.name, { type: editedBlob.type }) : file;
+
       if (type === "post") {
-        await createPost(caption, file);
+        await createPost(caption, upload);
       } else {
-        await createStory(file);
+        await createStory(upload);
       }
       toast.success(type === "post" ? "Posted!" : "Story shared!");
       reset();
@@ -96,18 +108,21 @@ export function ComposerSheet({ open, onOpenChange, defaultType = "post", onShar
             ))}
           </div>
 
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-6 text-muted-foreground hover:border-signal/40">
-            {previewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={previewUrl} alt="Selected preview" className="max-h-48 rounded-lg object-contain" />
-            ) : (
-              <>
-                <ImagePlus size={22} />
-                <span className="text-sm">Choose a photo</span>
-              </>
-            )}
-            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-          </label>
+          {previewUrl ? (
+            <div className="flex flex-col gap-2">
+              <PostEditor key={previewUrl} ref={editorRef} imageUrl={previewUrl} />
+              <label className="cursor-pointer self-start text-xs text-muted-foreground underline-offset-4 hover:underline">
+                Choose a different photo
+                <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+              </label>
+            </div>
+          ) : (
+            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-6 text-muted-foreground hover:border-signal/40">
+              <ImagePlus size={22} />
+              <span className="text-sm">Choose a photo</span>
+              <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+            </label>
+          )}
 
           {type === "post" && (
             <Textarea

@@ -23,7 +23,7 @@ const fontMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Adaptive Coach",
+  title: "GymBro",
   description:
     "A calisthenics training plan that adjusts to how you're actually performing.",
   manifest: "/manifest.json",

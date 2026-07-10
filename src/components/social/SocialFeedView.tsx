@@ -14,13 +14,19 @@ interface SocialFeedViewProps {
   initialPosts: Post[];
   initialStories: Story[];
   currentUserId: string;
+  initialShareCaption?: string;
 }
 
-export function SocialFeedView({ initialPosts, initialStories, currentUserId }: SocialFeedViewProps) {
+export function SocialFeedView({
+  initialPosts,
+  initialStories,
+  currentUserId,
+  initialShareCaption,
+}: SocialFeedViewProps) {
   const router = useRouter();
   const [posts, setPosts] = useState(initialPosts);
   const [stories, setStories] = useState(initialStories);
-  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(Boolean(initialShareCaption));
   const [composerType, setComposerType] = useState<"post" | "story">("post");
   const [viewingStory, setViewingStory] = useState<Story | null>(null);
 
@@ -28,6 +34,11 @@ export function SocialFeedView({ initialPosts, initialStories, currentUserId }: 
   useEffect(() => setPosts(initialPosts), [initialPosts]);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setStories(initialStories), [initialStories]);
+
+  useEffect(() => {
+    if (initialShareCaption) router.replace("/social");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openComposer(type: "post" | "story") {
     setComposerType(type);
@@ -71,6 +82,7 @@ export function SocialFeedView({ initialPosts, initialStories, currentUserId }: 
         open={composerOpen}
         onOpenChange={setComposerOpen}
         defaultType={composerType}
+        initialCaption={initialShareCaption}
         onShared={() => router.refresh()}
       />
 

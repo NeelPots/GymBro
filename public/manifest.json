@@ -1,6 +1,6 @@
 {
-  "name": "Adaptive Coach",
-  "short_name": "Adaptive Coach",
+  "name": "GymBro",
+  "short_name": "GymBro",
   "description": "A calisthenics training plan that adjusts to how you're actually performing.",
   "start_url": "/home",
   "display": "standalone",
