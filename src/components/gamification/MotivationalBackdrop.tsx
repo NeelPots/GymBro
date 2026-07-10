@@ -105,10 +105,10 @@ export function MotivationalBackdrop() {
         >
           <div
             className={
-              "py-3 text-center font-display text-lg font-bold tracking-wide uppercase sm:text-xl " +
+              "py-2 text-center font-display text-base font-bold tracking-wide uppercase sm:py-3 sm:text-2xl lg:py-4 lg:text-5xl " +
               (band.tone === "signal"
-                ? "bg-gradient-to-r from-transparent via-signal/[0.07] to-transparent text-signal/40"
-                : "bg-gradient-to-r from-transparent via-progress/[0.07] to-transparent text-progress/35")
+                ? "bg-gradient-to-r from-transparent via-signal/10 to-transparent text-signal/40 sm:via-signal/15 sm:text-signal/60 lg:via-signal/20 lg:text-signal/80"
+                : "bg-gradient-to-r from-transparent via-progress/10 to-transparent text-progress/35 sm:via-progress/15 sm:text-progress/55 lg:via-progress/20 lg:text-progress/75")
             }
           >
             {quotes[i]}
@@ -116,8 +116,8 @@ export function MotivationalBackdrop() {
         </div>
       ))}
 
-      <FlexFigure className="absolute -top-4 -left-6 h-28 w-auto text-signal/[0.09] sm:h-36 lg:h-44" />
-      <RunnerFigure className="absolute -right-8 -bottom-6 h-32 w-auto text-progress/[0.1] sm:h-40 lg:h-48" />
+      <FlexFigure className="absolute -top-2 -left-4 hidden h-56 w-auto text-signal/60 lg:block lg:h-72 xl:h-80" />
+      <RunnerFigure className="absolute -right-6 -bottom-4 hidden h-60 w-auto text-progress/55 lg:block lg:h-80 xl:h-[22rem]" />
     </div>
   );
 }
