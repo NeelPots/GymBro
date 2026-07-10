@@ -14,8 +14,12 @@ import { useLocalAdaptiveState } from "@/hooks/useLocalAdaptiveState";
 import { useLocalProgram } from "@/hooks/useLocalProgram";
 import { useLocalSplit } from "@/hooks/useLocalSplit";
 import { useActivePlanSource } from "@/hooks/useActivePlanSource";
+import { useLocalQuest } from "@/hooks/useLocalQuest";
 import { resolveActivePlan } from "@/lib/adaptive/activePlan";
 import { evaluateMovement, type SessionEntry } from "@/lib/adaptive/engine";
+import { LevelCard } from "@/components/gamification/LevelCard";
+import { PenaltyGate } from "@/components/gamification/PenaltyGate";
+import { MotivationalBanner } from "@/components/gamification/MotivationalBanner";
 import type { Exercise } from "@/lib/types/domain";
 
 export function HomeView({ exercises }: { exercises: Exercise[] }) {
@@ -26,9 +30,10 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
   const activeDay = splitDays.find((d) => d.id === activeDayId) ?? null;
   const planExercises = resolveActivePlan({ source, program, activeDay, library: exercises });
   const { state, isLoading, logSession, streak, weekCompletion } = useLocalAdaptiveState(planExercises);
+  const quest = useLocalQuest(streak, state !== null && state.sessionLog.length > 0);
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
 
-  if (isLoading || isProgramLoading || isSplitLoading || isSourceLoading || !state) {
+  if (isLoading || isProgramLoading || isSplitLoading || isSourceLoading || quest.isLoading || !state) {
     return (
       <div className="flex flex-col gap-4 pt-2">
         <Skeleton className="h-40 w-full rounded-[var(--radius)]" />
@@ -44,12 +49,42 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
     source === "ai" && program ? program.title : source === "split" && activeDay ? activeDay.name : "Today's targets";
   const planBadgeLabel = source === "default" ? "auto-adjusted" : "manage";
 
+  function announceLevelUp(result: { leveledUp: boolean; level: number; rankTitle: string }) {
+    if (!result.leveledUp) return;
+    toast.success(`Level Up! You're now Lv. ${result.level}`, {
+      description: result.rankTitle,
+    });
+  }
+
   return (
-    <div className="pt-2 lg:grid lg:grid-cols-[1fr_280px] lg:items-start lg:gap-6">
-      <div className="flex flex-col gap-4">
+    <div className="relative overflow-hidden pt-2 lg:grid lg:grid-cols-[1fr_280px] lg:items-start lg:gap-6">
+      <MotivationalBanner />
+      <div className="relative flex flex-col gap-4">
         <div className="flex items-baseline justify-between lg:hidden">
           <span className="font-mono text-[13px] text-signal">{streak} day streak</span>
         </div>
+
+        {quest.pendingPenalty && (
+          <PenaltyGate
+            pendingPenalty={quest.pendingPenalty}
+            onComplete={() => {
+              const result = quest.completePenalty();
+              toast.success("Gate cleared. +50 XP", { description: "Redemption logged." });
+              announceLevelUp(result);
+            }}
+            onSkip={(note) => {
+              quest.skipPenalty(note);
+              toast("The gate closes.", { description: "No judgment - it's logged, not held against you." });
+            }}
+          />
+        )}
+
+        <LevelCard
+          level={quest.level}
+          rankTitle={quest.rankTitle}
+          xpIntoLevel={quest.xpIntoLevel}
+          xpForNext={quest.xpForNext}
+        />
 
         <SignalPanel signals={state.lastSignal} rpeValues={rpeValues} />
 
@@ -115,6 +150,7 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
           const { action } = evaluateMovement(projectedHistory, params);
 
           logSession(activeExerciseId, reps, sets, rpe);
+          announceLevelUp(quest.awardSessionXp(action === "progress"));
 
           if (action === "progress") {
             const name = activeExercise?.name ?? "that exercise";

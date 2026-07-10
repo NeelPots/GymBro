@@ -5,10 +5,13 @@ import { usePathname } from "next/navigation";
 import { Activity, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { LevelBadge } from "@/components/gamification/LevelBadge";
+import { useLocalQuest } from "@/hooks/useLocalQuest";
 import { navItems } from "./navItems";
 
 export function DesktopSidebar() {
   const pathname = usePathname();
+  const { level, rankTitle, isLoading: isQuestLoading } = useLocalQuest();
 
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-border bg-surface px-4 py-6 lg:flex">
@@ -61,6 +64,7 @@ export function DesktopSidebar() {
             {isSupabaseConfigured ? "Connected" : "Local mode"}
           </span>
         </div>
+        {!isQuestLoading && <LevelBadge level={level} rankTitle={rankTitle} className="mt-1 self-start" />}
       </div>
     </aside>
   );

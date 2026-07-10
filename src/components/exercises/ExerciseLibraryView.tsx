@@ -17,9 +17,16 @@ const CATEGORIES = [
   { value: "cardio", label: "Cardio" },
 ];
 
-export function ExerciseLibraryView({ exercises }: { exercises: Exercise[] }) {
+interface ExerciseLibraryViewProps {
+  exercises: Exercise[];
+  initialCategory?: string;
+}
+
+export function ExerciseLibraryView({ exercises, initialCategory }: ExerciseLibraryViewProps) {
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState(
+    CATEGORIES.some((c) => c.value === initialCategory) ? (initialCategory as string) : "all",
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

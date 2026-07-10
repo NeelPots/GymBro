@@ -5,7 +5,7 @@ being rebuilt from a static prototype into a full product: an AI program
 builder, a shared and moderated exercise library with instructional media,
 and an in-app gym-community social feed.
 
-This README is both onboarding docs and the living roadmap. **Phases 0-4 are
+This README is both onboarding docs and the living roadmap. **Phases 0-5 are
 all built** - what's left is a handful of real-world setup steps (below)
 that only you can do: adding your own API keys, running SQL migrations
 against your Supabase project, and configuring Google OAuth.
@@ -34,6 +34,9 @@ against your Supabase project, and configuring Google OAuth.
   "share your PR" prompt whenever the adaptive engine detects real progress.
   Fully public (no followers model), gated behind sign-in.
 - **Google sign-in** on top of email/password, for the whole app.
+- **Leveling system** — XP and hunter ranks (E through S) for consistent
+  training, and a "penalty gate" that opens - gently, never forced - when a
+  training streak breaks, with an honor-system redemption workout.
 
 ## 🏗️ Architecture
 
@@ -288,6 +291,31 @@ gated behind sign-in, fully public (no followers model).
   limitation) - the share toast → `/social?share=...` navigation is verified
   working for signed-out users too (falls back to the sign-in prompt without
   breaking), but posting with an edited image needs a real login to confirm.
+
+### ✅ Phase 5 — Leveling system: XP, ranks, and penalty gates (done)
+A gamification layer, entirely local-first like the adaptive engine and
+splits before it - no accounts required.
+- `src/lib/gamification/rank.ts` - a small, unit-tested XP curve
+  (`rank.test.ts`) and a level → rank-title mapping (E-Rank Trainee through
+  S-Rank Hunter).
+- `useLocalQuest` (`adaptive-coach-quest-v1`) awards XP for logged sessions,
+  a bonus for adaptive-engine "progress", and a bonus for each new day of a
+  streak - and reconciles the streak useLocalAdaptiveState already computes
+  to detect exactly one thing: a streak that just broke.
+- When that happens, a "penalty gate" appears on Home (`PenaltyGate`):
+  an honor-system redemption quest (30 minutes of cardio, linking straight
+  to the cardio-filtered exercise library) that's encouraged, never forced.
+  Skipping is always one tap away behind a confirm dialog
+  (`PenaltySkipDialog`, built on a new `components/ui/alert-dialog.tsx`
+  primitive) with an optional note field - so a genuine reason (illness,
+  travel, a planned rest day) can be recorded without guilt, without
+  blocking anyone who really does just want to skip it.
+- `MotivationalBanner` adds two low-opacity, diagonal ribbon quotes behind
+  Home's content - decorative only, `pointer-events-none`, and picked from
+  the current date rather than random/`Date.now()` at render time to avoid
+  the same render-purity issue solved earlier in `useLocalAdaptiveState`.
+- Level is visible everywhere via `LevelBadge`, not just on Home - it's in
+  the mobile header and the desktop sidebar too.
 
 ### 🔮 Future (flagged, not scheduled)
 - **Wearable / device integration** — auto-detecting a completed set or a
