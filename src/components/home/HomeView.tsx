@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SignalPanel } from "@/components/signal/SignalPanel";
 import { MovementTile } from "@/components/movement/MovementTile";
@@ -8,13 +9,17 @@ import { LogSetSheet } from "@/components/movement/LogSetSheet";
 import { CircularProgress } from "@/components/shared/CircularProgress";
 import { ProfileCard } from "@/components/home/ProfileCard";
 import { useLocalAdaptiveState } from "@/hooks/useLocalAdaptiveState";
+import { useLocalProgram } from "@/hooks/useLocalProgram";
+import { resolvePlanExercises } from "@/lib/adaptive/planExercises";
 import type { Exercise } from "@/lib/types/domain";
 
 export function HomeView({ exercises }: { exercises: Exercise[] }) {
-  const { state, isLoading, logSession, streak, weekCompletion } = useLocalAdaptiveState(exercises);
+  const { program, isLoading: isProgramLoading } = useLocalProgram();
+  const planExercises = resolvePlanExercises(program, exercises);
+  const { state, isLoading, logSession, streak, weekCompletion } = useLocalAdaptiveState(planExercises);
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
 
-  if (isLoading || !state) {
+  if (isLoading || isProgramLoading || !state) {
     return (
       <div className="flex flex-col gap-4 pt-2">
         <Skeleton className="h-40 w-full rounded-[var(--radius)]" />
@@ -24,7 +29,7 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
     );
   }
 
-  const activeExercise = exercises.find((e) => e.id === activeExerciseId) ?? null;
+  const activeExercise = planExercises.find((e) => e.id === activeExerciseId) ?? null;
   const rpeValues = state.sessionLog.map((s) => s.avgRpe);
 
   return (
@@ -41,18 +46,23 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
             <CircularProgress value={weekCompletion} label="This week" size={60} strokeWidth={5} />
           </div>
           <StatCard value={String(state.sessionLog.length)} label="Total logs" />
-          <StatCard value={String(exercises.length)} label="Movements" />
+          <StatCard value={String(planExercises.length)} label="Movements" />
         </div>
 
         <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-display text-[17px] font-semibold">Today&apos;s targets</h2>
-            <span className="rounded-md bg-surface-2 px-2 py-0.75 font-mono text-[11px] text-muted-foreground">
-              auto-adjusted
-            </span>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-display text-[17px] font-semibold">
+              {program ? program.title : "Today's targets"}
+            </h2>
+            <Link
+              href="/train"
+              className="shrink-0 rounded-md bg-surface-2 px-2 py-0.75 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {program ? "manage" : "auto-adjusted"}
+            </Link>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {exercises.map((exercise) => (
+            {planExercises.map((exercise) => (
               <MovementTile
                 key={exercise.id}
                 name={exercise.name}
@@ -69,7 +79,7 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
         <ProfileCard
           streak={streak}
           totalLogs={state.sessionLog.length}
-          movementCount={exercises.length}
+          movementCount={planExercises.length}
         />
       </div>
 

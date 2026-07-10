@@ -41,6 +41,7 @@ export function GoalPicker({ onGenerated }: GoalPickerProps) {
       return;
     }
 
+    const trimmedPrompt = customPrompt.trim();
     setIsGenerating(true);
     try {
       const res = await fetch("/api/ai/generate-program", {
@@ -48,7 +49,7 @@ export function GoalPicker({ onGenerated }: GoalPickerProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           goalType,
-          customPrompt: goalType === "custom" ? customPrompt.trim() : undefined,
+          customPrompt: trimmedPrompt.length > 0 ? trimmedPrompt : undefined,
           experienceLevel,
           sessionsPerWeek,
         }),
@@ -65,7 +66,7 @@ export function GoalPicker({ onGenerated }: GoalPickerProps) {
         rationale: data.rationale,
         exercises: data.exercises,
         goalType,
-        customPrompt: goalType === "custom" ? customPrompt.trim() : undefined,
+        customPrompt: trimmedPrompt.length > 0 ? trimmedPrompt : undefined,
         experienceLevel,
         sessionsPerWeek,
         createdAt: new Date().toISOString(),
@@ -100,19 +101,17 @@ export function GoalPicker({ onGenerated }: GoalPickerProps) {
         </div>
       </div>
 
-      {goalType === "custom" && (
-        <div>
-          <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">
-            Describe what you want
-          </Label>
-          <Textarea
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder="e.g. focus on pulling strength, I have a pull-up bar and rings, 3 sessions a week"
-            rows={3}
-          />
-        </div>
-      )}
+      <div>
+        <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">
+          {goalType === "custom" ? "Describe what you want" : "Anything specific to add? (optional)"}
+        </Label>
+        <Textarea
+          value={customPrompt}
+          onChange={(e) => setCustomPrompt(e.target.value)}
+          placeholder="e.g. focus on pulling strength, I have a pull-up bar and rings, 3 sessions a week"
+          rows={3}
+        />
+      </div>
 
       <div>
         <Label className="mb-2.5 block text-xs uppercase tracking-wide text-muted-foreground">

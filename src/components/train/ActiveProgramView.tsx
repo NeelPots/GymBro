@@ -7,6 +7,7 @@ import { MovementTile } from "@/components/movement/MovementTile";
 import { LogSetSheet } from "@/components/movement/LogSetSheet";
 import { useLocalAdaptiveState } from "@/hooks/useLocalAdaptiveState";
 import type { LocalProgram } from "@/hooks/useLocalProgram";
+import { resolvePlanExercises } from "@/lib/adaptive/planExercises";
 import type { Exercise } from "@/lib/types/domain";
 
 interface ActiveProgramViewProps {
@@ -16,22 +17,7 @@ interface ActiveProgramViewProps {
 }
 
 export function ActiveProgramView({ program, exercises, onGenerateNew }: ActiveProgramViewProps) {
-  const exerciseById = new Map(exercises.map((e) => [e.id, e]));
-
-  const programExercises: Exercise[] = [...program.exercises]
-    .sort((a, b) => a.orderIndex - b.orderIndex)
-    .flatMap((pe) => {
-      const base = exerciseById.get(pe.exerciseId);
-      if (!base) return [];
-      return [
-        {
-          ...base,
-          defaultReps: pe.targetReps,
-          defaultSets: pe.targetSets,
-          difficultyTier: 1,
-        },
-      ];
-    });
+  const programExercises = resolvePlanExercises(program, exercises);
 
   const { state, isLoading, logSession } = useLocalAdaptiveState(programExercises);
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
@@ -53,7 +39,12 @@ export function ActiveProgramView({ program, exercises, onGenerateNew }: ActiveP
       </div>
 
       <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
-        <h3 className="mb-4 font-display text-[15px] font-semibold">Your program</h3>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="font-display text-[15px] font-semibold">Your program</h3>
+          <span className="rounded-md bg-surface-2 px-2 py-0.75 font-mono text-[11px] text-muted-foreground">
+            now on Home
+          </span>
+        </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {programExercises.map((exercise) => (
             <MovementTile
