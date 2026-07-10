@@ -9,7 +9,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center gap-8 border-t border-border bg-surface/90 py-3 backdrop-blur-md sm:gap-12 lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center gap-4 border-t border-border bg-surface/90 px-2 py-3 backdrop-blur-md sm:gap-10 lg:hidden">
       {navItems.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname?.startsWith(href + "/");
         return (

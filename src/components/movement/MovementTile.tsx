@@ -1,5 +1,5 @@
-import { Dumbbell, ArrowUp, Footprints, CircleDot, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { categoryIcon, DEFAULT_CATEGORY_ICON } from "@/lib/categoryIcon";
 import type { MovementParams } from "@/lib/adaptive/engine";
 
 interface MovementTileProps {
@@ -9,15 +9,8 @@ interface MovementTileProps {
   onLog: () => void;
 }
 
-const categoryIcon: Record<string, LucideIcon> = {
-  push: Dumbbell,
-  pull: ArrowUp,
-  legs: Footprints,
-  core: CircleDot,
-};
-
 export function MovementTile({ name, category, params, onLog }: MovementTileProps) {
-  const Icon = categoryIcon[category] ?? Dumbbell;
+  const Icon = categoryIcon[category] ?? DEFAULT_CATEGORY_ICON;
 
   return (
     <div className="flex flex-col items-center gap-2.5 rounded-xl border border-border bg-surface-2/40 p-4 text-center transition-colors hover:border-signal/30">

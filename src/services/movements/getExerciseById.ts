@@ -7,11 +7,27 @@ import type { Exercise } from "@/lib/types/domain";
 
 type ExerciseRow = Database["public"]["Tables"]["exercises"]["Row"];
 
-const SELECT_COLUMNS =
-  "id, name, category, description, default_reps, default_sets, difficulty_tier, instructions, easier_variation, harder_variation, video_url";
+export async function getExerciseById(id: string): Promise<Exercise | null> {
+  if (!isSupabaseConfigured) {
+    return DEFAULT_EXERCISES.find((e) => e.id === id) ?? null;
+  }
 
-function mapRow(
-  row: Pick<
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("exercises")
+    .select(
+      "id, name, category, description, default_reps, default_sets, difficulty_tier, instructions, easier_variation, harder_variation, video_url",
+    )
+    .eq("id", id)
+    .eq("moderation_status", "approved")
+    .eq("is_public", true)
+    .maybeSingle();
+
+  if (error || !data) {
+    return DEFAULT_EXERCISES.find((e) => e.id === id) ?? null;
+  }
+
+  const row = data as Pick<
     ExerciseRow,
     | "id"
     | "name"
@@ -24,8 +40,8 @@ function mapRow(
     | "easier_variation"
     | "harder_variation"
     | "video_url"
-  >,
-): Exercise {
+  >;
+
   return {
     id: row.id,
     name: row.name,
@@ -39,28 +55,4 @@ function mapRow(
     harderVariation: row.harder_variation,
     videoUrl: row.video_url,
   };
-}
-
-/**
- * Public/approved exercise library. Falls back to the bundled default
- * movements until a Supabase project is connected - see
- * .env.local.example and README.md "Running locally".
- */
-export async function getExercises(): Promise<Exercise[]> {
-  if (!isSupabaseConfigured) {
-    return DEFAULT_EXERCISES;
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("exercises")
-    .select(SELECT_COLUMNS)
-    .eq("moderation_status", "approved")
-    .eq("is_public", true);
-
-  if (error || !data || data.length === 0) {
-    return DEFAULT_EXERCISES;
-  }
-
-  return data.map(mapRow);
 }

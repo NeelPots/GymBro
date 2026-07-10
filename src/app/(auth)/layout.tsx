@@ -1,4 +1,5 @@
-import { Activity } from "lucide-react";
+import Link from "next/link";
+import { Activity, ArrowLeft } from "lucide-react";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,6 +11,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(255,77,46,0.16), transparent 70%)",
         }}
       />
+      <Link
+        href="/home"
+        className="absolute left-4 top-4 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:left-6 sm:top-6"
+      >
+        <ArrowLeft size={16} />
+        Back to app
+      </Link>
       <div className="relative w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-signal/10 text-signal ring-1 ring-signal/30">

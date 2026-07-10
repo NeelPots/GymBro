@@ -43,6 +43,10 @@ export interface Database {
           submitted_by: string | null;
           moderation_status: "approved" | "pending" | "rejected";
           is_public: boolean;
+          instructions: string | null;
+          easier_variation: string | null;
+          harder_variation: string | null;
+          video_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -57,6 +61,10 @@ export interface Database {
           submitted_by?: string | null;
           moderation_status?: "approved" | "pending" | "rejected";
           is_public?: boolean;
+          instructions?: string | null;
+          easier_variation?: string | null;
+          harder_variation?: string | null;
+          video_url?: string | null;
           created_at?: string;
         };
         Update: {
@@ -71,6 +79,10 @@ export interface Database {
           submitted_by?: string | null;
           moderation_status?: "approved" | "pending" | "rejected";
           is_public?: boolean;
+          instructions?: string | null;
+          easier_variation?: string | null;
+          harder_variation?: string | null;
+          video_url?: string | null;
           created_at?: string;
         };
       };
