@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Users } from "lucide-react";
 import { ComingSoon } from "@/components/shared/ComingSoon";
 import { SocialFeedView } from "@/components/social/SocialFeedView";
@@ -6,6 +5,12 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { getFeed } from "@/services/social/getFeed";
 import { getStories } from "@/services/social/getStories";
+import { MOCK_POSTS, MOCK_STORIES } from "@/lib/social/mockSocialData";
+import type { Post, Story } from "@/lib/types/domain";
+
+function byNewest<T extends { createdAt: string }>(a: T, b: T): number {
+  return b.createdAt.localeCompare(a.createdAt);
+}
 
 export default async function SocialPage({
   searchParams,
@@ -13,6 +18,7 @@ export default async function SocialPage({
   searchParams: Promise<{ share?: string }>;
 }) {
   const { share } = await searchParams;
+
   if (!isSupabaseConfigured) {
     return (
       <div className="pt-2">
@@ -31,49 +37,27 @@ export default async function SocialPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return (
-      <div className="pt-2">
-        <div className="relative flex flex-col items-center gap-4 overflow-hidden rounded-[var(--radius)] border border-border bg-surface px-6 py-20 text-center">
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-48"
-            style={{
-              background: "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(255,77,46,0.14), transparent 70%)",
-            }}
-          />
-          <div className="relative flex size-14 items-center justify-center rounded-2xl bg-signal/10 text-signal ring-1 ring-signal/25">
-            <Users size={26} strokeWidth={1.9} />
-          </div>
-          <h2 className="relative font-display text-xl font-bold tracking-tight">Join the community</h2>
-          <p className="relative max-w-xs text-sm leading-relaxed text-muted-foreground">
-            Sign in to see posts and stories from other members, and to share your own.
-          </p>
-          <div className="relative flex gap-3">
-            <Link
-              href="/login"
-              className="rounded-lg bg-signal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-signal/90"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface-2"
-            >
-              Sign up
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  let posts: Post[];
+  let stories: Story[];
 
-  const [posts, stories] = await Promise.all([getFeed(), getStories()]);
+  if (user) {
+    const [realPosts, realStories] = await Promise.all([getFeed(), getStories()]);
+    posts = [...realPosts, ...MOCK_POSTS].sort(byNewest);
+    stories = [...realStories, ...MOCK_STORIES].sort(byNewest);
+  } else {
+    // Not signed in: browsing is open (demo content fills the feed so it's
+    // never empty) - posting/liking/commenting still needs a real sign-in,
+    // enforced by SocialFeedView/ComposerSheet/PostCard when currentUserId
+    // is null.
+    posts = [...MOCK_POSTS].sort(byNewest);
+    stories = [...MOCK_STORIES].sort(byNewest);
+  }
 
   return (
     <SocialFeedView
       initialPosts={posts}
       initialStories={stories}
-      currentUserId={user.id}
+      currentUserId={user?.id ?? null}
       initialShareCaption={share}
     />
   );

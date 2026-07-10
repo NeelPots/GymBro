@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StoriesBar } from "./StoriesBar";
@@ -13,7 +14,7 @@ import type { Post, Story } from "@/lib/types/domain";
 interface SocialFeedViewProps {
   initialPosts: Post[];
   initialStories: Story[];
-  currentUserId: string;
+  currentUserId: string | null;
   initialShareCaption?: string;
 }
 
@@ -26,7 +27,7 @@ export function SocialFeedView({
   const router = useRouter();
   const [posts, setPosts] = useState(initialPosts);
   const [stories, setStories] = useState(initialStories);
-  const [composerOpen, setComposerOpen] = useState(Boolean(initialShareCaption));
+  const [composerOpen, setComposerOpen] = useState(Boolean(initialShareCaption) && Boolean(currentUserId));
   const [composerType, setComposerType] = useState<"post" | "story">("post");
   const [viewingStory, setViewingStory] = useState<Story | null>(null);
 
@@ -47,18 +48,39 @@ export function SocialFeedView({
 
   return (
     <div className="flex flex-col gap-4 pt-2">
+      {!currentUserId && (
+        <div className="flex items-center justify-between gap-3 rounded-[var(--radius)] border border-signal/25 bg-signal/5 px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            Browsing as a guest - sign in to post, like, and comment.
+          </p>
+          <Link
+            href="/login"
+            className="shrink-0 rounded-md bg-signal px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-signal/90"
+          >
+            Sign in
+          </Link>
+        </div>
+      )}
+
       <StoriesBar
         stories={stories}
-        onAddStory={() => openComposer("story")}
+        onAddStory={() => (currentUserId ? openComposer("story") : router.push("/login"))}
         onViewStory={(story) => setViewingStory(story)}
       />
 
       <div className="flex items-center justify-between">
         <h2 className="font-display text-[17px] font-semibold">Feed</h2>
-        <Button size="sm" onClick={() => openComposer("post")} className="gap-1.5">
-          <Plus size={15} />
-          New post
-        </Button>
+        {currentUserId ? (
+          <Button size="sm" onClick={() => openComposer("post")} className="gap-1.5">
+            <Plus size={15} />
+            New post
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => router.push("/login")} className="gap-1.5">
+            <Plus size={15} />
+            Sign in to post
+          </Button>
+        )}
       </div>
 
       {posts.length === 0 ? (
@@ -78,13 +100,15 @@ export function SocialFeedView({
         </div>
       )}
 
-      <ComposerSheet
-        open={composerOpen}
-        onOpenChange={setComposerOpen}
-        defaultType={composerType}
-        initialCaption={initialShareCaption}
-        onShared={() => router.refresh()}
-      />
+      {currentUserId && (
+        <ComposerSheet
+          open={composerOpen}
+          onOpenChange={setComposerOpen}
+          defaultType={composerType}
+          initialCaption={initialShareCaption}
+          onShared={() => router.refresh()}
+        />
+      )}
 
       {viewingStory && <StoryViewer story={viewingStory} onClose={() => setViewingStory(null)} />}
     </div>

@@ -85,6 +85,7 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
           rankTitle={quest.rankTitle}
           xpIntoLevel={quest.xpIntoLevel}
           xpForNext={quest.xpForNext}
+          totalSessionsLogged={state.sessionLog.length}
         />
 
         <SignalPanel signals={state.lastSignal} rpeValues={rpeValues} />

@@ -1,10 +1,38 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createClient } from "@/lib/supabase/server";
+import { signOut } from "@/lib/actions/auth";
 import { SettingsActions } from "@/components/settings/SettingsActions";
 import { SettingsRow, SettingsSection } from "@/components/settings/SettingsRow";
 
-export default function SettingsPage() {
+async function getSignedInUser() {
+  if (!isSupabaseConfigured) return null;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  return {
+    email: user.email ?? null,
+    displayName: profile?.display_name ?? null,
+    avatarUrl: profile?.avatar_url ?? null,
+  };
+}
+
+export default async function SettingsPage() {
+  const user = await getSignedInUser();
+
   return (
     <div className="flex flex-col gap-5 pt-2">
       <div>
@@ -18,7 +46,48 @@ export default function SettingsPage() {
       </div>
 
       <SettingsSection label="Account">
-        {isSupabaseConfigured ? (
+        {!isSupabaseConfigured ? (
+          <SettingsRow
+            label="Local mode"
+            description="Connect a Supabase project (.env.local.example) to enable accounts and sync."
+            control={<Badge variant="outline">Not connected</Badge>}
+          />
+        ) : user ? (
+          <>
+            <SettingsRow
+              label={user.displayName ?? "Signed in"}
+              description={user.email ?? "Connected to Supabase"}
+              control={
+                <Avatar size="sm">
+                  {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt="" />}
+                  <AvatarFallback>
+                    {(user.displayName ?? user.email ?? "?").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              }
+            />
+            <SettingsRow
+              label="Profile"
+              description="Your training stats and social activity, in one place."
+              control={
+                <Link href="/profile" className="text-sm font-medium text-signal underline-offset-4 hover:underline">
+                  View profile
+                </Link>
+              }
+            />
+            <SettingsRow
+              label="Session"
+              description="Sign out of this account on this device."
+              control={
+                <form action={signOut}>
+                  <Button type="submit" variant="outline" size="sm">
+                    Sign out
+                  </Button>
+                </form>
+              }
+            />
+          </>
+        ) : (
           <SettingsRow
             label="Connected to Supabase"
             description="Sign in to sync your data across devices."
@@ -27,12 +96,6 @@ export default function SettingsPage() {
                 Sign in
               </Link>
             }
-          />
-        ) : (
-          <SettingsRow
-            label="Local mode"
-            description="Connect a Supabase project (.env.local.example) to enable accounts and sync."
-            control={<Badge variant="outline">Not connected</Badge>}
           />
         )}
       </SettingsSection>

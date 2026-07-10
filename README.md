@@ -5,7 +5,7 @@ being rebuilt from a static prototype into a full product: an AI program
 builder, a shared and moderated exercise library with instructional media,
 and an in-app gym-community social feed.
 
-This README is both onboarding docs and the living roadmap. **Phases 0-5 are
+This README is both onboarding docs and the living roadmap. **Phases 0-6 are
 all built** - what's left is a handful of real-world setup steps (below)
 that only you can do: adding your own API keys, running SQL migrations
 against your Supabase project, and configuring Google OAuth.
@@ -25,7 +25,7 @@ against your Supabase project, and configuring Google OAuth.
 - **Custom workout splits** — build your own named training days (e.g. "Push
   Day"), each with its own exercises/sets/reps, and activate one as today's
   plan - an alternative to the AI builder that drives Home the same way.
-- **Exercise library** — ~82 calisthenics + gym exercises across 7 categories
+- **Exercise library** — 300+ calisthenics + gym exercises across 7 categories
   (push/pull/legs/shoulders/arms/core/cardio), searchable and filterable,
   each with step-by-step instructions, easier/harder variations, and a
   looping illustrative pictogram (real video takes priority when set).
@@ -136,6 +136,8 @@ after this one):
    - `supabase/migrations/0003_social.sql`
    - `supabase/seed_library_2.sql` (Phase 4's ~50 additional exercises + the
      shoulders/arms/cardio categories - no new migration needed, same table)
+   - `supabase/seed_library_3.sql` (Phase 6's ~220 additional exercises,
+     bringing the library to 300+ - same table again, no new migration)
 4. Restart `npm run dev`. Auth pages (`/login`, `/signup`), Supabase-backed
    exercise fetching, and the social feed will start working automatically —
    the app detects whether Supabase is configured and falls back gracefully
@@ -310,12 +312,52 @@ splits before it - no accounts required.
   primitive) with an optional note field - so a genuine reason (illness,
   travel, a planned rest day) can be recorded without guilt, without
   blocking anyone who really does just want to skip it.
-- `MotivationalBanner` adds two low-opacity, diagonal ribbon quotes behind
-  Home's content - decorative only, `pointer-events-none`, and picked from
-  the current date rather than random/`Date.now()` at render time to avoid
-  the same render-purity issue solved earlier in `useLocalAdaptiveState`.
+- `MotivationalBanner` shows a rotating motivational quote - decorative
+  only, `pointer-events-none`, and picked from the current date rather than
+  random/`Date.now()` at render time to avoid the same render-purity issue
+  solved earlier in `useLocalAdaptiveState`. Redesigned in Phase 6 below -
+  see that section for the current, bigger version.
 - Level is visible everywhere via `LevelBadge`, not just on Home - it's in
   the mobile header and the desktop sidebar too.
+
+### ✅ Phase 6 — Profile pages, concrete level-ups, social demo data, 300+ exercises (done)
+- **Real auth state:** `/settings` now shows who you're actually signed in
+  as (avatar, email, sign-out) instead of always showing a generic "Sign
+  in" link regardless of session.
+- **New `/profile` page:** one page, two tabs (Training / Social, the same
+  toggle pattern as `/train`'s AI Coach / My Splits). Training reuses
+  `LevelCard`/`SignalPanel`/stats and works with zero sign-in; Social shows
+  your Supabase profile plus a grid of your own posts (`getMyPosts.ts`), or
+  a sign-in prompt if you're not signed in.
+- **Concrete level-up framing:** `LevelCard` now also shows an estimated
+  "hours trained" line per rank (e.g. "12/40 hrs trained to reach C-Rank
+  Hunter") - a friendlier translation of the same XP curve
+  (`hoursForLevel`/`hoursTrainedFromSessions` in `rank.ts`), not a second,
+  separately-tuned system.
+- **Social feed populated immediately:** `src/lib/social/mockSocialData.ts`
+  seeds ~8 demo authors, 15 posts, and 6 stories (real, public placeholder
+  media via `picsum.photos`/`i.pravatar.cc`, not invented URLs) so `/social`
+  is never empty - visible even signed out now (browsing only; posting/
+  liking/commenting still require a real sign-in, gated inline rather than
+  behind a full-page wall).
+- **Exercise library, ~82 → 300+:** `supabase/seed_library_3.sql` (mirrored
+  into `defaultExercises.ts`) adds roughly 220 more exercises at the same
+  depth as before across all 7 categories - more machine/cable/band
+  variants, more compound-lift variants, more bodyweight progressions, more
+  cardio/functional movements.
+- **Real bug fix:** the category pictogram's shoulder-press, curl, and
+  squat animations were pivoting from the wrong point (a `transform-box:
+  fill-box` rule was reinterpreting SVG-coordinate `transform-origin`
+  values as offsets from each shape's own bounding box). Fixed by dropping
+  that rule and adding the hip pivot the squat animation was missing
+  entirely - confirmed via computed-style inspection, not just a visual
+  guess.
+- **Motivational banners redesigned:** the previous absolutely-positioned
+  background ribbons turned out to render fully hidden behind Home's large
+  opaque cards once tested at real scroll depth. Replaced with real,
+  always-visible banner cards in the normal page flow - bigger, bolder,
+  and confirmed visible top-to-bottom of the page instead of only in a
+  thin gap near the top.
 
 ### 🔮 Future (flagged, not scheduled)
 - **Wearable / device integration** — auto-detecting a completed set or a

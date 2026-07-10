@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AuthorAvatar, authorLabel } from "./AuthorAvatar";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import { addComment, deletePost, getComments, toggleLike } from "@/services/social/socialClient";
+import { isMockPostId } from "@/lib/social/mockSocialData";
 import { cn } from "@/lib/utils";
 import type { Comment, Post } from "@/lib/types/domain";
 
@@ -26,10 +27,15 @@ export function PostCard({ post, currentUserId, onDeleted }: PostCardProps) {
 
   const isOwnPost = currentUserId === post.author.id;
 
+  const isMock = isMockPostId(post.id);
+
   async function handleLike() {
     const nextLiked = !liked;
     setLiked(nextLiked);
     setLikeCount((n) => n + (nextLiked ? 1 : -1));
+
+    if (isMock) return; // demo content - keep the optimistic UI update, nothing to persist
+
     try {
       await toggleLike(post.id, liked);
     } catch {
@@ -42,6 +48,10 @@ export function PostCard({ post, currentUserId, onDeleted }: PostCardProps) {
   async function handleToggleComments() {
     setCommentsOpen((open) => !open);
     if (!comments) {
+      if (isMock) {
+        setComments([]);
+        return;
+      }
       const fetched = await getComments(post.id);
       setComments(fetched);
     }
@@ -50,6 +60,12 @@ export function PostCard({ post, currentUserId, onDeleted }: PostCardProps) {
   async function handleAddComment() {
     const body = newComment.trim();
     if (body.length === 0) return;
+
+    if (isMock) {
+      toast("This is demo content - comments here aren't saved.");
+      return;
+    }
+
     setIsSubmittingComment(true);
     try {
       await addComment(post.id, body);

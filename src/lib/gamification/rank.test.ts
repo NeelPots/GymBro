@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { levelFromXp, rankTitle, xpRequiredForLevel } from "./rank";
+import {
+  hoursForLevel,
+  hoursTrainedFromSessions,
+  levelFromXp,
+  nextRankTier,
+  rankTitle,
+  xpRequiredForLevel,
+} from "./rank";
 
 describe("xpRequiredForLevel", () => {
   it("increases gently with level", () => {
@@ -42,5 +49,42 @@ describe("rankTitle", () => {
     expect(rankTitle(29)).toBe("A-Rank Hunter");
     expect(rankTitle(30)).toBe("S-Rank Hunter");
     expect(rankTitle(99)).toBe("S-Rank Hunter");
+  });
+});
+
+describe("nextRankTier", () => {
+  it("finds the next tier up", () => {
+    expect(nextRankTier(1)).toEqual({ minLevel: 5, title: "D-Rank Hunter" });
+    expect(nextRankTier(4)).toEqual({ minLevel: 5, title: "D-Rank Hunter" });
+    expect(nextRankTier(5)).toEqual({ minLevel: 10, title: "C-Rank Hunter" });
+    expect(nextRankTier(29)).toEqual({ minLevel: 30, title: "S-Rank Hunter" });
+  });
+
+  it("returns null once at the top rank", () => {
+    expect(nextRankTier(30)).toBeNull();
+    expect(nextRankTier(99)).toBeNull();
+  });
+});
+
+describe("hoursForLevel", () => {
+  it("is zero at level 1 (no xp needed yet)", () => {
+    expect(hoursForLevel(1)).toBe(0);
+  });
+
+  it("increases for higher levels", () => {
+    const d = hoursForLevel(5);
+    const c = hoursForLevel(10);
+    const b = hoursForLevel(15);
+    expect(d).toBeGreaterThan(0);
+    expect(c).toBeGreaterThan(d);
+    expect(b).toBeGreaterThan(c);
+  });
+});
+
+describe("hoursTrainedFromSessions", () => {
+  it("converts sessions to hours using the estimated session length", () => {
+    expect(hoursTrainedFromSessions(0)).toBe(0);
+    expect(hoursTrainedFromSessions(3)).toBe(1); // 3 * 20min = 1hr
+    expect(hoursTrainedFromSessions(1)).toBe(0.3); // 20min rounded to 0.1hr
   });
 });
