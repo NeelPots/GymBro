@@ -34,15 +34,12 @@ export function CategoryAnimation({ category }: { category: string }) {
       </svg>
       <span className="text-xs">{label} - illustrative</span>
       <style>{`
-        .category-anim .ca-torso,
-        .category-anim .ca-leg-l,
-        .category-anim .ca-leg-r,
-        .category-anim .ca-arm-l,
-        .category-anim .ca-arm-r,
-        .category-anim .ca-head,
-        .category-anim .ca-body {
-          transform-box: fill-box;
-        }
+        /* transform-origin values below are written in the SVG's own 0-100
+           viewBox coordinate space (e.g. 50px 30px = the shoulder), so they
+           rely on the default transform-box: view-box - do NOT switch to
+           fill-box here, that would reinterpret these as offsets from each
+           shape's own bounding box and pivot every joint from the wrong
+           point (this was a real bug, not just a style choice). */
 
         /* push: whole upper body dips and rises, arms bent at the sides */
         .category-anim--push .ca-head,
@@ -70,9 +67,11 @@ export function CategoryAnimation({ category }: { category: string }) {
           animation: ca-squat-upper 1.6s ease-in-out infinite;
         }
         .category-anim--legs .ca-leg-l {
+          transform-origin: 50px 52px;
           animation: ca-squat-leg-l 1.6s ease-in-out infinite;
         }
         .category-anim--legs .ca-leg-r {
+          transform-origin: 50px 52px;
           animation: ca-squat-leg-r 1.6s ease-in-out infinite;
         }
 

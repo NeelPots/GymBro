@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 const QUOTES = [
   "Every rep writes your next level.",
@@ -15,30 +16,49 @@ const QUOTES = [
   "Show up. Level up.",
 ];
 
+interface MotivationalBannerProps {
+  /** Which quote slot this instance shows, so multiple banners on one page don't repeat. */
+  offset?: number;
+  tone?: "signal" | "progress";
+}
+
 /**
- * Purely decorative diagonal ribbons behind the page content - the one
- * exception to putting real information in the background. The quote picks
+ * A big, unmistakably visible motivational banner in the normal page flow -
+ * not an absolutely-positioned background layer, since testing showed those
+ * get fully hidden behind Home's large opaque cards anyway. The quote picks
  * off the current date (not Date.now()/Math.random() during render, which
  * would trip react-hooks/purity) so it's stable across a session and only
  * changes day to day.
  */
-export function MotivationalBanner() {
-  const [quote, setQuote] = useState(QUOTES[0]);
+export function MotivationalBanner({ offset = 0, tone = "signal" }: MotivationalBannerProps) {
+  const [quote, setQuote] = useState(QUOTES[offset % QUOTES.length]);
 
   useEffect(() => {
     const dayIndex = Math.floor(Date.now() / 86400000);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setQuote(QUOTES[dayIndex % QUOTES.length]);
-  }, []);
+    setQuote(QUOTES[(dayIndex + offset) % QUOTES.length]);
+  }, [offset]);
+
+  const isSignal = tone === "signal";
 
   return (
-    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-      <div className="absolute -right-16 top-10 w-72 -rotate-12 bg-gradient-to-r from-signal/15 to-transparent py-2 text-center font-display text-xs font-semibold tracking-wider text-signal/70 uppercase">
+    <div
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none -rotate-1 select-none rounded-[var(--radius)] border px-5 py-5 text-center",
+        isSignal
+          ? "border-signal/20 bg-gradient-to-r from-signal/20 via-signal/10 to-transparent"
+          : "border-progress/20 bg-gradient-to-r from-progress/20 via-progress/10 to-transparent",
+      )}
+    >
+      <p
+        className={cn(
+          "font-display text-xl font-bold tracking-wide uppercase sm:text-2xl",
+          isSignal ? "text-signal/90" : "text-progress/80",
+        )}
+      >
         {quote}
-      </div>
-      <div className="absolute -left-20 bottom-16 w-72 rotate-[10deg] bg-gradient-to-r from-transparent to-progress/15 py-2 text-center font-display text-xs font-semibold tracking-wider text-progress/60 uppercase">
-        Level up, one session at a time.
-      </div>
+      </p>
     </div>
   );
 }

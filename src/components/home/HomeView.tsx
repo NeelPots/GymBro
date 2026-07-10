@@ -57,12 +57,13 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
   }
 
   return (
-    <div className="relative overflow-hidden pt-2 lg:grid lg:grid-cols-[1fr_280px] lg:items-start lg:gap-6">
-      <MotivationalBanner />
-      <div className="relative flex flex-col gap-4">
+    <div className="pt-2 lg:grid lg:grid-cols-[1fr_280px] lg:items-start lg:gap-6">
+      <div className="flex flex-col gap-4">
         <div className="flex items-baseline justify-between lg:hidden">
           <span className="font-mono text-[13px] text-signal">{streak} day streak</span>
         </div>
+
+        <MotivationalBanner offset={0} tone="signal" />
 
         {quest.pendingPenalty && (
           <PenaltyGate
@@ -95,6 +96,8 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
           <StatCard value={String(state.sessionLog.length)} label="Total logs" />
           <StatCard value={String(planExercises.length)} label="Movements" />
         </div>
+
+        <MotivationalBanner offset={4} tone="progress" />
 
         <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
