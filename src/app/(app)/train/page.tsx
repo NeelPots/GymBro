@@ -1,15 +1,11 @@
-import { Dumbbell } from "lucide-react";
-import { ComingSoon } from "@/components/shared/ComingSoon";
+import { TrainView } from "@/components/train/TrainView";
+import { getExercises } from "@/services/movements/getExercises";
 
-export default function TrainPage() {
+export default async function TrainPage() {
+  const exercises = await getExercises();
   return (
     <div className="pt-2">
-      <ComingSoon
-        icon={Dumbbell}
-        title="AI program builder"
-        description="Pick a goal - build strength, lose fat, gain muscle, stay lean - or describe what you want in your own words, and get a program built from the exercise library."
-        phase="Phase 1"
-      />
+      <TrainView exercises={exercises} />
     </div>
   );
 }

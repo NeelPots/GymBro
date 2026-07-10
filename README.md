@@ -5,8 +5,8 @@ being rebuilt from a static prototype into a full product: an AI program
 builder, a shared and moderated exercise library with instructional media,
 and an in-app gym-community social feed.
 
-This README is both onboarding docs and the living roadmap. **Phase 0 is
-done** (this rebuild); Phases 1-3 are designed but not yet built.
+This README is both onboarding docs and the living roadmap. **Phases 0 and 1
+are done**; Phases 2-3 are designed but not yet built.
 
 ---
 
@@ -17,9 +17,11 @@ done** (this rebuild); Phases 1-3 are designed but not yet built.
   explainable rule engine, not a black box.
 - **Adaptive engine** — looks at your last few sessions per movement
   (completion rate + RPE) and decides whether to progress, hold, or deload.
-- Soon: an **AI assistant** that builds you a full program, a **community
-  exercise library** anyone can contribute to (AI-moderated), and a **social
-  feed** for the gym-community side of things.
+- **AI program builder** — pick a goal or write a custom prompt and get a
+  training program composed strictly from real exercises in the library
+  (never invented ones).
+- Soon: a **community exercise library** anyone can contribute to
+  (AI-moderated), and a **social feed** for the gym-community side of things.
 
 ## 🏗️ Architecture
 
@@ -29,7 +31,7 @@ done** (this rebuild); Phases 1-3 are designed but not yet built.
 | UI | Tailwind CSS v4 + shadcn/ui (Base UI primitives) |
 | Motion | Framer Motion — restrained, whitelisted use only (see below) |
 | Backend | Supabase (Postgres + Auth + Storage + Realtime) |
-| AI | Provider-agnostic service interface; Claude as first implementation |
+| AI | Provider-agnostic service interface (`services/ai`); Claude (`claude-opus-4-8`) as first implementation, forced tool-use for structured output |
 | Charts | Chart.js via react-chartjs-2 |
 | PWA | Web manifest + a lightweight runtime-caching service worker |
 | Tests | Vitest (adaptive engine unit tests) |
@@ -47,24 +49,31 @@ src/
   app/
     (auth)/login, (auth)/signup        # Supabase email/password auth
     (app)/home                         # signal panel, today's targets, log-a-set
-    (app)/train                        # AI program builder (Phase 1 - placeholder)
+    (app)/train                        # AI program builder: goal picker + active program
     (app)/history                      # streak/compliance + volume chart
     (app)/social                       # community feed (Phase 3 - placeholder)
-    (app)/settings
+    (app)/settings                     # sectioned preferences
+    api/ai/generate-program            # AI program builder route handler
   components/
     ui/            shadcn/ui primitives
-    nav/           BottomNav, AppHeader, PageTransition
+    nav/           BottomNav, DesktopSidebar, AppHeader, PageTransition, navItems
     signal/        SignalPanel, SignalWave
-    movement/      MovementRow, LogSetSheet
+    movement/      MovementTile, LogSetSheet (per-set checklist)
     charts/        VolumeChart
+    home/          ProfileCard (desktop right rail)
+    train/         GoalPicker, ActiveProgramView, TrainView
+    settings/      SettingsRow, SettingsSection, SettingsActions
+    shared/        NumberStepper, CircularProgress, ComingSoon, ServiceWorkerRegister
   lib/
-    adaptive/      engine.ts (the rule-based coach) + engine.test.ts
+    adaptive/      engine.ts (the rule-based coach) + engine.test.ts + defaultExercises.ts
     supabase/      client.ts, server.ts, proxy.ts, config.ts
     types/         database.types.ts, domain.ts
   services/
     movements/     getExercises.ts (Supabase, falls back to local defaults)
+    ai/            types.ts, provider.ts, providers/anthropic.ts, generateProgram.ts (+ tests)
   hooks/
-    useLocalAdaptiveState.ts   # localStorage-backed state until accounts exist
+    useLocalAdaptiveState.ts   # localStorage-backed logging state until accounts exist
+    useLocalProgram.ts         # localStorage-backed AI-generated program
   proxy.ts         # Supabase auth session refresh (Next.js 16 renamed "middleware")
 supabase/
   migrations/0001_init.sql    # profiles, exercises, session_logs
@@ -100,6 +109,15 @@ after this one):
    exercise fetching will start working automatically — the app detects
    whether Supabase is configured and falls back gracefully if not.
 
+To use the **AI program builder** (`/train`), add an Anthropic API key —
+this is independent of Supabase, since generated programs are stored in
+`localStorage` rather than the database (see Phase 1 below):
+
+1. Create a key at [console.anthropic.com](https://console.anthropic.com) with billing enabled.
+2. Add `ANTHROPIC_API_KEY=...` to `.env.local` (`AI_PROVIDER=anthropic` is already the default).
+3. Restart `npm run dev`. Without a key, `/train` still renders and explains
+   what's missing instead of failing silently.
+
 ## 🎨 Design system
 
 Dark-first, no light theme (yet) — this was a deliberate choice carried over
@@ -129,16 +147,28 @@ infrastructure. Ported the adaptive engine and design language 1:1. New
 4-tab navigation shell (Home / Train / History / Social). Reached parity
 with the original app's logging flow, now backed by a typed, tested engine.
 
-### 🧠 Phase 1 — AI Program Builder
+### ✅ Phase 1 — AI Program Builder (done)
 Pick a goal (build strength / lose fat / gain muscle / stay lean) or type a
 free-form prompt, and get a full program generated from the exercise
 library — never freeform, always composed of real exercises by ID.
-- New tables: `programs`, `program_exercises`.
-- New service: `services/ai/generateProgram` behind a provider-agnostic
-  `AIProvider` interface (`services/ai/provider.ts`), so swapping Claude /
-  OpenAI / others later doesn't touch the rest of the app.
-- **Blocker:** requires an AI provider API key (e.g. `ANTHROPIC_API_KEY`)
-  with billing enabled.
+- `services/ai/generateProgram.ts` fetches the current exercise library via
+  the existing `getExercises()`, injects it as the candidate set, calls the
+  configured `AIProvider`, then filters the response against that candidate
+  set - a hallucinated exercise ID is dropped, never silently invented.
+  `validateProgramExercises()` is unit-tested in isolation.
+- `services/ai/providers/anthropic.ts` forces the model through a
+  strict-schema tool call (`tool_choice` pinned to `generate_program`) so the
+  output is always structurally valid JSON, never free text to parse.
+- **Revised from the original design:** rather than new `programs` /
+  `program_exercises` Supabase tables requiring sign-in, the generated
+  program persists to `localStorage` (`useLocalProgram`) - consistent with
+  how the rest of the app degrades gracefully without Supabase, and it means
+  the AI builder works the moment an Anthropic key is added, no account
+  required. Logging a set against a program exercise flows through the same
+  `useLocalAdaptiveState` engine Home already uses.
+- **Blocker:** requires `ANTHROPIC_API_KEY` with billing enabled - without
+  it, `/train` still renders and explains what's missing rather than
+  failing silently.
 
 ### 📚 Phase 2 — Exercise Library, Submission & Moderation
 Anyone can submit a custom exercise; an AI moderation pass checks it's
@@ -172,6 +202,11 @@ Instagram/Facebook (that's an explicit later step, not this one).
 
 ## 🧪 Testing
 
-`src/lib/adaptive/engine.test.ts` covers the progress / hold / deload
-decision branches, the lookback window, and the rep→set→tier progression
-curve. Run with `npm test`.
+- `src/lib/adaptive/engine.test.ts` covers the progress / hold / deload
+  decision branches, the lookback window, and the rep→set→tier progression
+  curve.
+- `src/services/ai/validateProgramExercises.test.ts` covers the
+  candidate-exercise validation that guarantees the AI can never introduce
+  an exercise outside the library.
+
+Run with `npm test`.
