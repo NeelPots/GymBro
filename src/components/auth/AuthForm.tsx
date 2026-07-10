@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { AuthFormState } from "@/lib/actions/auth";
 
 interface AuthFormProps {
@@ -21,6 +23,17 @@ export function AuthForm({ title, action, submitLabel, altHref, altLabel }: Auth
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-xl font-bold">{title}</h1>
+
+      {isSupabaseConfigured && (
+        <div className="flex flex-col gap-4">
+          <GoogleSignInButton />
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">or</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+        </div>
+      )}
 
       <form action={formAction} className="flex flex-col gap-4">
         <div>
