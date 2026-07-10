@@ -2,6 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { VolumeChart } from "@/components/charts/VolumeChart";
+import { CircularProgress } from "@/components/shared/CircularProgress";
 import { useLocalAdaptiveState } from "@/hooks/useLocalAdaptiveState";
 import type { Exercise } from "@/lib/types/domain";
 
@@ -24,7 +25,9 @@ export function HistoryView({ exercises }: { exercises: Exercise[] }) {
     <div className="flex flex-col gap-4 pt-2">
       <div className="grid grid-cols-3 gap-3">
         <StatCard value={`${streak}`} label="Day streak" />
-        <StatCard value={`${weekCompletion}%`} label="This week" />
+        <div className="flex items-center justify-center rounded-[var(--radius)] border border-border bg-surface p-3">
+          <CircularProgress value={weekCompletion} label="This week" size={60} strokeWidth={5} />
+        </div>
         <StatCard value={String(state.sessionLog.length)} label="Total logs" />
       </div>
 

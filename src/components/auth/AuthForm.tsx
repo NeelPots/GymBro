@@ -20,7 +20,7 @@ export function AuthForm({ title, action, submitLabel, altHref, altLabel }: Auth
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-bold">{title}</h1>
+      <h1 className="font-display text-xl font-bold">{title}</h1>
 
       <form action={formAction} className="flex flex-col gap-4">
         <div>

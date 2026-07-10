@@ -9,9 +9,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { NumberStepper } from "@/components/shared/NumberStepper";
 import type { MovementParams } from "@/lib/adaptive/engine";
 
 interface LogSetSheetProps {
@@ -44,26 +44,14 @@ export function LogSetSheet({ open, onOpenChange, movementName, params, onSave }
             <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">
               Completed sets
             </Label>
-            <Input
-              type="number"
-              min={0}
-              value={completedSets}
-              onChange={(e) => setCompletedSets(Number(e.target.value))}
-              className="font-mono"
-            />
+            <NumberStepper value={completedSets} onChange={setCompletedSets} min={0} />
           </div>
 
           <div>
             <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">
               Completed reps per set
             </Label>
-            <Input
-              type="number"
-              min={0}
-              value={completedReps}
-              onChange={(e) => setCompletedReps(Number(e.target.value))}
-              className="font-mono"
-            />
+            <NumberStepper value={completedReps} onChange={setCompletedReps} min={0} />
           </div>
 
           <div>

@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SignalPanel } from "@/components/signal/SignalPanel";
 import { MovementRow } from "@/components/movement/MovementRow";
 import { LogSetSheet } from "@/components/movement/LogSetSheet";
+import { CircularProgress } from "@/components/shared/CircularProgress";
 import { useLocalAdaptiveState } from "@/hooks/useLocalAdaptiveState";
 import type { Exercise } from "@/lib/types/domain";
 
@@ -34,7 +35,9 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
       <SignalPanel signals={state.lastSignal} rpeValues={rpeValues} />
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard value={`${weekCompletion}%`} label="This week" />
+        <div className="flex items-center justify-center rounded-[var(--radius)] border border-border bg-surface p-3">
+          <CircularProgress value={weekCompletion} label="This week" size={60} strokeWidth={5} />
+        </div>
         <StatCard value={String(state.sessionLog.length)} label="Total logs" />
         <StatCard value={String(exercises.length)} label="Movements" />
       </div>
@@ -50,6 +53,7 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
           <MovementRow
             key={exercise.id}
             name={exercise.name}
+            category={exercise.category}
             params={state.movements[exercise.id]}
             isFirst={i === 0}
             onLog={() => setActiveExerciseId(exercise.id)}

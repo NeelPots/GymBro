@@ -16,7 +16,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center gap-8 border-t border-border bg-surface/90 py-3.5 backdrop-blur-md sm:gap-12">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center gap-8 border-t border-border bg-surface/90 py-3 backdrop-blur-md sm:gap-12">
       {items.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname?.startsWith(href + "/");
         return (
@@ -28,7 +28,14 @@ export function BottomNav() {
               active ? "text-signal" : "text-subtle",
             )}
           >
-            <Icon size={20} strokeWidth={active ? 2.25 : 1.75} />
+            <span
+              className={cn(
+                "flex size-8 items-center justify-center rounded-full transition-colors",
+                active && "bg-signal/12",
+              )}
+            >
+              <Icon size={19} strokeWidth={active ? 2.25 : 1.75} />
+            </span>
             {label}
           </Link>
         );
