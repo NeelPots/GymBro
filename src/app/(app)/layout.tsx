@@ -2,10 +2,12 @@ import { AppHeader } from "@/components/nav/AppHeader";
 import { BottomNav } from "@/components/nav/BottomNav";
 import { DesktopSidebar } from "@/components/nav/DesktopSidebar";
 import { PageTransition } from "@/components/nav/PageTransition";
+import { MotivationalBackdrop } from "@/components/gamification/MotivationalBackdrop";
 
 export default function AppShellLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-full">
+      <MotivationalBackdrop />
       <DesktopSidebar />
       <div className="min-h-full pb-24 lg:pb-8 lg:pl-64">
         <div className="mx-auto w-full max-w-xl lg:max-w-4xl">

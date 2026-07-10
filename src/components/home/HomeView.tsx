@@ -19,7 +19,6 @@ import { resolveActivePlan } from "@/lib/adaptive/activePlan";
 import { evaluateMovement, type SessionEntry } from "@/lib/adaptive/engine";
 import { LevelCard } from "@/components/gamification/LevelCard";
 import { PenaltyGate } from "@/components/gamification/PenaltyGate";
-import { MotivationalBanner } from "@/components/gamification/MotivationalBanner";
 import type { Exercise } from "@/lib/types/domain";
 
 export function HomeView({ exercises }: { exercises: Exercise[] }) {
@@ -63,8 +62,6 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
           <span className="font-mono text-[13px] text-signal">{streak} day streak</span>
         </div>
 
-        <MotivationalBanner offset={0} tone="signal" />
-
         {quest.pendingPenalty && (
           <PenaltyGate
             pendingPenalty={quest.pendingPenalty}
@@ -97,8 +94,6 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
           <StatCard value={String(state.sessionLog.length)} label="Total logs" />
           <StatCard value={String(planExercises.length)} label="Movements" />
         </div>
-
-        <MotivationalBanner offset={4} tone="progress" />
 
         <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
