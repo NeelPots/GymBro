@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const QUOTES = [
   "Every rep writes your next level.",
@@ -124,6 +125,12 @@ function pickQuotes(pathname: string, dayIndex: number): string[] {
 export function MotivationalBackdrop() {
   const pathname = usePathname();
   const [quotes, setQuotes] = useState(() => pickQuotes(pathname ?? "/", 0));
+  // Below `sm`, the content column has almost no side gutter, so the bands'
+  // usual diagonal overflow reads as clipped text jammed against card edges
+  // (and the header, which has no gutter at all) instead of decoration.
+  // Keep mobile bands flat and edge-to-edge so they only ever show in the
+  // actual empty space between stacked cards, never crossing into them.
+  const [isCompact, setIsCompact] = useState(false);
 
   useEffect(() => {
     const dayIndex = Math.floor(Date.now() / 86400000);
@@ -131,17 +138,34 @@ export function MotivationalBackdrop() {
     setQuotes(pickQuotes(pathname ?? "/", dayIndex));
   }, [pathname]);
 
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setIsCompact(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   return (
     <div
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
       style={{ width: "100vw", maxWidth: "100vw" }}
       aria-hidden="true"
     >
-      {BANDS.map((band, i) => (
+      {BANDS.map((band, i) => {
+        // The top band sits right where the mobile header (and the loose
+        // "day streak" text just under it) lives - no page chrome down
+        // there is guaranteed to be tall/opaque enough to fully clear it,
+        // so skip it below `sm` rather than chase an exact pixel offset.
+        if (isCompact && i === 0) return null;
+        return (
         <div
           key={i}
-          className="absolute left-1/2 w-[118%] -translate-x-1/2"
-          style={{ top: band.top, transform: `translateX(-50%) rotate(${band.rotate})` }}
+          className={cn("absolute left-1/2 -translate-x-1/2", isCompact ? "w-full" : "w-[118%]")}
+          style={{
+            top: band.top,
+            transform: isCompact ? "translateX(-50%)" : `translateX(-50%) rotate(${band.rotate})`,
+          }}
         >
           <div
             className={
@@ -154,7 +178,8 @@ export function MotivationalBackdrop() {
             {quotes[i]}
           </div>
         </div>
-      ))}
+        );
+      })}
 
       <FlexFigure className="absolute -top-2 -left-4 hidden h-56 w-auto text-signal/60 lg:block lg:h-72 xl:h-80" />
       <RunnerFigure className="absolute -right-6 -bottom-4 hidden h-60 w-auto text-progress/55 lg:block lg:h-80 xl:h-[22rem]" />

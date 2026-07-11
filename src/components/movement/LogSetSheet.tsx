@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CheckCircle2, Circle, Minus, Plus } from "lucide-react";
 import {
   Sheet,
@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import type { MovementParams } from "@/lib/adaptive/engine";
+import { RestTimerOverlay } from "@/components/train/RestTimerOverlay";
+import { getRestSeconds } from "@/lib/workout/restDuration";
 
 interface SetRow {
   reps: number;
@@ -24,6 +26,7 @@ interface LogSetSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   movementName: string | null;
+  category?: string;
   params: MovementParams | null;
   onSave: (completedReps: number, completedSets: number, rpe: number) => void;
 }
@@ -45,9 +48,11 @@ function seedRows(params: MovementParams | null): SetRow[] {
  * same aggregate (completedReps, completedSets, rpe) the adaptive engine
  * expects, so no data-model change was needed to support it.
  */
-export function LogSetSheet({ open, onOpenChange, movementName, params, onSave }: LogSetSheetProps) {
+export function LogSetSheet({ open, onOpenChange, movementName, category, params, onSave }: LogSetSheetProps) {
   const [rows, setRows] = useState<SetRow[]>(() => seedRows(params));
   const [rpe, setRpe] = useState(6);
+  const [restTimer, setRestTimer] = useState<{ key: number; seconds: number } | null>(null);
+  const restKeyRef = useRef(0);
 
   const doneRows = rows.filter((r) => r.done);
   const completedSets = doneRows.length;
@@ -58,8 +63,18 @@ export function LogSetSheet({ open, onOpenChange, movementName, params, onSave }
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
 
+  function toggleDone(index: number) {
+    const wasDone = rows[index].done;
+    updateRow(index, { done: !wasDone });
+    if (!wasDone && params) {
+      restKeyRef.current += 1;
+      setRestTimer({ key: restKeyRef.current, seconds: getRestSeconds(category ?? "", params.difficultyTier) });
+    }
+  }
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="mx-auto max-w-xl rounded-t-2xl border-t border-border bg-surface-2 px-5 pt-2 pb-8">
         <SheetHeader className="px-0">
           <SheetTitle className="font-display text-lg">Log: {movementName}</SheetTitle>
@@ -110,7 +125,7 @@ export function LogSetSheet({ open, onOpenChange, movementName, params, onSave }
                   </div>
                   <button
                     type="button"
-                    onClick={() => updateRow(i, { done: !row.done })}
+                    onClick={() => toggleDone(i)}
                     aria-label={row.done ? "Mark set as not done" : "Mark set as done"}
                     className={cn(
                       "shrink-0 transition-colors",
@@ -161,6 +176,15 @@ export function LogSetSheet({ open, onOpenChange, movementName, params, onSave }
           </Button>
         </SheetFooter>
       </SheetContent>
-    </Sheet>
+      </Sheet>
+      {restTimer && (
+        <RestTimerOverlay
+          key={restTimer.key}
+          seconds={restTimer.seconds}
+          exerciseName={movementName ?? "next set"}
+          onDone={() => setRestTimer(null)}
+        />
+      )}
+    </>
   );
 }

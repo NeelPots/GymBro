@@ -132,6 +132,7 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
         open={activeExerciseId !== null}
         onOpenChange={(open) => !open && setActiveExerciseId(null)}
         movementName={activeExercise?.name ?? null}
+        category={activeExercise?.category}
         params={activeExerciseId ? state.movements[activeExerciseId] : null}
         onSave={(reps, sets, rpe) => {
           if (!activeExerciseId) return;
