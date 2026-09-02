@@ -9,7 +9,9 @@ import { SplitsView } from "./SplitsView";
 import { RoutineGenerator } from "./RoutineGenerator";
 import { useLocalProgram } from "@/hooks/useLocalProgram";
 import { useLocalSplit } from "@/hooks/useLocalSplit";
+import { useLocalCustomExercises } from "@/hooks/useLocalCustomExercises";
 import { useActivePlanSource } from "@/hooks/useActivePlanSource";
+import { submitExercise } from "@/services/movements/submitExercise";
 import type { Exercise } from "@/lib/types/domain";
 
 const TABS = [
@@ -24,12 +26,15 @@ export function TrainView({ exercises }: { exercises: Exercise[] }) {
   const { program, isLoading: isProgramLoading, saveProgram, clearProgram } = useLocalProgram();
   const { days, activeDayId, isLoading: isSplitLoading, createDay, updateDay, deleteDay, activateDay } =
     useLocalSplit();
+  const { customExercises, isLoading: isCustomExercisesLoading, addCustomExercise } = useLocalCustomExercises();
   const { source, isLoading: isSourceLoading, setSource } = useActivePlanSource();
   const [tab, setTab] = useState<Tab>("ai");
 
-  if (isProgramLoading || isSplitLoading || isSourceLoading) {
+  if (isProgramLoading || isSplitLoading || isSourceLoading || isCustomExercisesLoading) {
     return <Skeleton className="h-72 w-full rounded-[var(--radius)]" />;
   }
+
+  const allExercises = [...exercises, ...customExercises];
 
   return (
     <div className="flex flex-col gap-4">
@@ -53,7 +58,7 @@ export function TrainView({ exercises }: { exercises: Exercise[] }) {
         (program ? (
           <ActiveProgramView
             program={program}
-            exercises={exercises}
+            exercises={allExercises}
             onGenerateNew={clearProgram}
             isActive={source === "ai"}
             onActivate={() => setSource("ai")}
@@ -69,7 +74,7 @@ export function TrainView({ exercises }: { exercises: Exercise[] }) {
 
       {tab === "splits" && (
         <SplitsView
-          exercises={exercises}
+          exercises={allExercises}
           days={days}
           activeDayId={activeDayId}
           isActiveSource={source === "split"}
@@ -79,6 +84,10 @@ export function TrainView({ exercises }: { exercises: Exercise[] }) {
           onActivateDay={(dayId) => {
             activateDay(dayId);
             setSource("split");
+          }}
+          onCreateExercise={(exercise) => {
+            addCustomExercise(exercise);
+            void submitExercise(exercise);
           }}
         />
       )}

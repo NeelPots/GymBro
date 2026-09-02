@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Circle, Pencil, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Circle, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,7 @@ interface RoutineCardProps {
   onAddStep: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
+  onToggleCollapsed: () => void;
 }
 
 function StepRow({ step, onComplete, onEdit, onDelete }: { step: StepWithState; onComplete: () => void; onEdit: () => void; onDelete: () => void }) {
@@ -94,33 +95,47 @@ function StepRow({ step, onComplete, onEdit, onDelete }: { step: StepWithState; 
   );
 }
 
-/** One routine's card: header (rename/delete) plus its steps, due-today ones actionable. */
-export function RoutineCard({ routine, onComplete, onEditStep, onDeleteStep, onAddStep, onRename, onDelete }: RoutineCardProps) {
+/** One routine's card: header (collapse/rename/delete) plus its steps, due-today ones actionable. */
+export function RoutineCard({ routine, onComplete, onEditStep, onDeleteStep, onAddStep, onRename, onDelete, onToggleCollapsed }: RoutineCardProps) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const collapsed = routine.collapsed ?? false;
   const dueCount = routine.steps.filter((s) => s.dueToday).length;
   const doneCount = routine.steps.filter((s) => s.dueToday && s.completed).length;
 
   return (
     <div className="hud-panel rounded-[var(--radius)] p-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className={cn("flex items-center justify-between gap-3", !collapsed && "mb-3")}>
         <button
           type="button"
           onClick={() => {
             systemAudio.click();
-            setRenameOpen(true);
+            onToggleCollapsed();
           }}
-          className="flex items-center gap-1.5 font-display text-[17px] font-semibold hud-glow-text transition-opacity hover:opacity-80"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? `Expand ${routine.name}` : `Collapse ${routine.name}`}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >
-          {routine.name}
-          <Pencil size={12} className="text-muted-foreground" />
+          <ChevronDown size={16} className={cn("shrink-0 text-muted-foreground transition-transform", collapsed && "-rotate-90")} />
+          <span className="truncate font-display text-[17px] font-semibold hud-glow-text">{routine.name}</span>
         </button>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           {dueCount > 0 && (
             <span className="font-mono text-[11px] text-muted-foreground">
               {doneCount}/{dueCount} today
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              systemAudio.click();
+              setRenameOpen(true);
+            }}
+            aria-label={`Rename ${routine.name} routine`}
+            className="text-muted-foreground transition-colors hover:text-signal"
+          >
+            <Pencil size={13} />
+          </button>
           <button
             type="button"
             onClick={() => setDeleteOpen(true)}
@@ -148,33 +163,37 @@ export function RoutineCard({ routine, onComplete, onEditStep, onDeleteStep, onA
         </div>
       </div>
 
-      {routine.steps.length === 0 ? (
-        <p className="mb-3 text-xs text-muted-foreground">No steps yet.</p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {routine.steps.map((step) => (
-            <StepRow
-              key={step.id}
-              step={step}
-              onComplete={() => onComplete(step.id)}
-              onEdit={() => onEditStep(step)}
-              onDelete={() => onDeleteStep(step.id)}
-            />
-          ))}
-        </div>
-      )}
+      {!collapsed && (
+        <>
+          {routine.steps.length === 0 ? (
+            <p className="mb-3 text-xs text-muted-foreground">No steps yet.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {routine.steps.map((step) => (
+                <StepRow
+                  key={step.id}
+                  step={step}
+                  onComplete={() => onComplete(step.id)}
+                  onEdit={() => onEditStep(step)}
+                  onDelete={() => onDeleteStep(step.id)}
+                />
+              ))}
+            </div>
+          )}
 
-      <button
-        type="button"
-        onClick={() => {
-          systemAudio.click();
-          onAddStep();
-        }}
-        className="mt-3 flex items-center gap-1.5 rounded-md border border-dashed border-border px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-signal/40 hover:text-signal"
-      >
-        <Plus size={13} />
-        New step
-      </button>
+          <button
+            type="button"
+            onClick={() => {
+              systemAudio.click();
+              onAddStep();
+            }}
+            className="mt-3 flex items-center gap-1.5 rounded-md border border-dashed border-border px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-signal/40 hover:text-signal"
+          >
+            <Plus size={13} />
+            New step
+          </button>
+        </>
+      )}
 
       <RoutineNameDialog open={renameOpen} onOpenChange={setRenameOpen} initialName={routine.name} onSave={onRename} />
     </div>

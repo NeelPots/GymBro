@@ -14,6 +14,7 @@ import { ProfileCard } from "@/components/home/ProfileCard";
 import { useLocalAdaptiveState } from "@/hooks/useLocalAdaptiveState";
 import { useLocalProgram } from "@/hooks/useLocalProgram";
 import { useLocalSplit } from "@/hooks/useLocalSplit";
+import { useLocalCustomExercises } from "@/hooks/useLocalCustomExercises";
 import { useActivePlanSource } from "@/hooks/useActivePlanSource";
 import { resolveActivePlan } from "@/lib/adaptive/activePlan";
 import { evaluateMovement, type SessionEntry } from "@/lib/adaptive/engine";
@@ -29,9 +30,10 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
   const router = useRouter();
   const { program, isLoading: isProgramLoading } = useLocalProgram();
   const { days: splitDays, activeDayId, isLoading: isSplitLoading } = useLocalSplit();
+  const { customExercises, isLoading: isCustomExercisesLoading } = useLocalCustomExercises();
   const { source, isLoading: isSourceLoading } = useActivePlanSource();
   const activeDay = splitDays.find((d) => d.id === activeDayId) ?? null;
-  const planExercises = resolveActivePlan({ source, program, activeDay, library: exercises });
+  const planExercises = resolveActivePlan({ source, program, activeDay, library: [...exercises, ...customExercises] });
   const { state, isLoading, logSession, streak, weekCompletion } = useLocalAdaptiveState(planExercises);
   const quest = useQuest();
   const hasLoggedBefore = state !== null && state.sessionLog.length > 0;
@@ -43,7 +45,7 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streak, hasLoggedBefore]);
 
-  if (isLoading || isProgramLoading || isSplitLoading || isSourceLoading || quest.isLoading || !state) {
+  if (isLoading || isProgramLoading || isSplitLoading || isSourceLoading || isCustomExercisesLoading || quest.isLoading || !state) {
     return (
       <div className="flex flex-col gap-4 pt-2">
         <Skeleton className="h-40 w-full rounded-[var(--radius)]" />

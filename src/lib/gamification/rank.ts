@@ -8,15 +8,27 @@ export const XP_PER_SESSION = 15;
 export const XP_PROGRESS_BONUS = 75;
 export const XP_STREAK_BONUS = 10;
 export const XP_REDEMPTION = 50;
+/** Streak length (in days) at which the consistency bonus below caps out. */
+export const STREAK_BONUS_CAP_DAYS = 30;
 
 /**
- * XP required to go from `level` to `level + 1`. Quadratic, not linear: the
- * per-level jump itself grows, so early levels stay approachable while
- * chasing S-Rank at level 30 takes a genuinely long grind (~4x the total XP
- * of a flat +25/level curve) rather than a couple of good weeks.
+ * XP required to go from `level` to `level + 1`. Genuinely exponential
+ * (18% compounding per level) rather than linear or quadratic: level 1->2
+ * is still a friendly 100 XP, but the curve compounds hard at the top, so
+ * S-Rank (level 30) takes a real long-term grind instead of a good month.
  */
 export function xpRequiredForLevel(level: number): number {
-  return 100 + (level - 1) * 25 + (level - 1) ** 2 * 5;
+  return Math.round(100 * 1.18 ** (level - 1));
+}
+
+/**
+ * The streak-advance bonus scales with how long the streak already is, so
+ * staying consistent is worth disproportionately more than the same total
+ * effort done in one binge - capped so it doesn't dwarf everything else at
+ * very long streaks.
+ */
+export function streakBonusXp(currentStreak: number): number {
+  return XP_STREAK_BONUS + Math.min(Math.max(0, currentStreak), STREAK_BONUS_CAP_DAYS) * 2;
 }
 
 export interface LevelInfo {

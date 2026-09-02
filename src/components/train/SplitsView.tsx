@@ -17,6 +17,7 @@ interface SplitsViewProps {
   onUpdateDay: (dayId: string, name: string, exercises: SplitExercise[]) => void;
   onDeleteDay: (dayId: string) => void;
   onActivateDay: (dayId: string) => void;
+  onCreateExercise: (exercise: Exercise) => void;
 }
 
 export function SplitsView({
@@ -28,6 +29,7 @@ export function SplitsView({
   onUpdateDay,
   onDeleteDay,
   onActivateDay,
+  onCreateExercise,
 }: SplitsViewProps) {
   const [editingDay, setEditingDay] = useState<SplitDay | "new" | null>(null);
 
@@ -62,6 +64,7 @@ export function SplitsView({
         onOpenChange={(open) => !open && setEditingDay(null)}
         day={editingDay === "new" ? null : editingDay}
         exercises={exercises}
+        onCreateExercise={onCreateExercise}
         onSave={(name, dayExercises) => {
           if (editingDay === "new") {
             onCreateDay(name, dayExercises);

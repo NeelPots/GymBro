@@ -5,21 +5,22 @@ import {
   levelFromXp,
   nextRankTier,
   rankTitle,
+  streakBonusXp,
   xpRequiredForLevel,
 } from "./rank";
 
 describe("xpRequiredForLevel", () => {
-  it("increases quadratically with level", () => {
+  it("increases exponentially with level", () => {
     expect(xpRequiredForLevel(1)).toBe(100);
-    expect(xpRequiredForLevel(2)).toBe(130);
-    expect(xpRequiredForLevel(3)).toBe(170);
-    expect(xpRequiredForLevel(5)).toBe(280);
+    expect(xpRequiredForLevel(2)).toBe(118);
+    expect(xpRequiredForLevel(3)).toBe(139);
+    expect(xpRequiredForLevel(5)).toBe(194);
   });
 
-  it("grows faster at higher levels than a flat linear curve would", () => {
+  it("grows faster (multiplicatively) at higher levels than a flat linear curve would", () => {
     const earlyJump = xpRequiredForLevel(2) - xpRequiredForLevel(1);
     const lateJump = xpRequiredForLevel(20) - xpRequiredForLevel(19);
-    expect(lateJump).toBeGreaterThan(earlyJump);
+    expect(lateJump).toBeGreaterThan(earlyJump * 5);
   });
 });
 
@@ -33,12 +34,29 @@ describe("levelFromXp", () => {
   });
 
   it("advances to level 2 exactly at the threshold", () => {
-    expect(levelFromXp(100)).toEqual({ level: 2, xpIntoLevel: 0, xpForNext: 130 });
+    expect(levelFromXp(100)).toEqual({ level: 2, xpIntoLevel: 0, xpForNext: 118 });
   });
 
   it("carries remaining xp into the next level's progress", () => {
-    // level 1 costs 100, level 2 costs 130 -> 250 total lands mid-level-3
-    expect(levelFromXp(250)).toEqual({ level: 3, xpIntoLevel: 20, xpForNext: 170 });
+    // level 1 costs 100, level 2 costs 118 -> 250 total lands mid-level-3
+    expect(levelFromXp(250)).toEqual({ level: 3, xpIntoLevel: 32, xpForNext: 139 });
+  });
+});
+
+describe("streakBonusXp", () => {
+  it("scales up with a longer streak", () => {
+    expect(streakBonusXp(0)).toBe(10);
+    expect(streakBonusXp(1)).toBe(12);
+    expect(streakBonusXp(10)).toBe(30);
+  });
+
+  it("caps out at STREAK_BONUS_CAP_DAYS", () => {
+    expect(streakBonusXp(30)).toBe(70);
+    expect(streakBonusXp(100)).toBe(70);
+  });
+
+  it("never goes negative for a bad streak value", () => {
+    expect(streakBonusXp(-5)).toBe(10);
   });
 });
 

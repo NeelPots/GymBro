@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Minus, Plus, Search, X } from "lucide-react";
+import { Minus, Plus, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import type { SplitDay, SplitExercise } from "@/hooks/useLocalSplit";
 import type { Exercise } from "@/lib/types/domain";
 
@@ -16,7 +17,11 @@ interface SplitDayEditorSheetProps {
   day: SplitDay | null;
   exercises: Exercise[];
   onSave: (name: string, exercises: SplitExercise[]) => void;
+  /** Persists a user-authored exercise so it's in the library for next time (see TrainView). */
+  onCreateExercise: (exercise: Exercise) => void;
 }
+
+const CUSTOM_EXERCISE_CATEGORIES = ["push", "pull", "legs", "core", "shoulders", "arms", "cardio"];
 
 interface DraftExercise {
   exerciseId: string;
@@ -41,10 +46,14 @@ function seedDraft(day: SplitDay | null, exercises: Exercise[]): DraftExercise[]
  * day's id (see SplitsView) so opening a different day remounts with fresh
  * initial values, same pattern as LogSetSheet.
  */
-export function SplitDayEditorSheet({ open, onOpenChange, day, exercises, onSave }: SplitDayEditorSheetProps) {
+export function SplitDayEditorSheet({ open, onOpenChange, day, exercises, onSave, onCreateExercise }: SplitDayEditorSheetProps) {
   const [name, setName] = useState(day?.name ?? "");
   const [draft, setDraft] = useState<DraftExercise[]>(() => seedDraft(day, exercises));
   const [query, setQuery] = useState("");
+  const [creatorOpen, setCreatorOpen] = useState(false);
+  const [newCategory, setNewCategory] = useState(CUSTOM_EXERCISE_CATEGORIES[0]);
+  const [newReps, setNewReps] = useState(10);
+  const [newSets, setNewSets] = useState(3);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -64,6 +73,26 @@ export function SplitDayEditorSheet({ open, onOpenChange, day, exercises, onSave
       },
     ]);
     setQuery("");
+  }
+
+  function createCustomExercise() {
+    const trimmed = query.trim();
+    if (trimmed.length === 0) return;
+    const exercise: Exercise = {
+      id: `custom-${crypto.randomUUID()}`,
+      name: trimmed,
+      category: newCategory,
+      description: null,
+      defaultReps: newReps,
+      defaultSets: newSets,
+      difficultyTier: 1,
+    };
+    onCreateExercise(exercise);
+    addExercise(exercise);
+    setCreatorOpen(false);
+    setNewReps(10);
+    setNewSets(3);
+    toast.success(`"${exercise.name}" added`, { description: "Saved to your exercise library for next time." });
   }
 
   function removeExercise(exerciseId: string) {
@@ -140,6 +169,53 @@ export function SplitDayEditorSheet({ open, onOpenChange, day, exercises, onSave
                     <span className="text-xs text-muted-foreground">{e.category}</span>
                   </button>
                 ))}
+              </div>
+            )}
+
+            {query.trim().length > 0 && results.length === 0 && !creatorOpen && (
+              <button
+                type="button"
+                onClick={() => setCreatorOpen(true)}
+                className="mt-2 flex w-full items-center gap-2 rounded-lg border border-dashed border-signal/30 bg-signal/5 px-3 py-2.5 text-left text-sm text-signal transition-colors hover:bg-signal/10"
+              >
+                <Sparkles size={15} className="shrink-0" />
+                Can&apos;t find &quot;{query.trim()}&quot;? Add it as a custom exercise
+              </button>
+            )}
+
+            {creatorOpen && (
+              <div className="mt-2 flex flex-col gap-3 rounded-lg border border-signal/25 bg-surface p-3">
+                <div className="text-sm font-medium">Add &quot;{query.trim()}&quot;</div>
+                <div>
+                  <Label className="mb-1.5 block text-[11px] uppercase tracking-wide text-muted-foreground">Category</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CUSTOM_EXERCISE_CATEGORIES.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setNewCategory(c)}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-xs capitalize transition-colors",
+                          newCategory === c ? "border-signal bg-signal/10 text-signal" : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <StepperField label="sets" value={newSets} onChange={setNewSets} />
+                  <StepperField label="reps" value={newReps} onChange={setNewReps} />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="secondary" size="sm" className="flex-1" onClick={() => setCreatorOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="button" size="sm" className="flex-1" onClick={createCustomExercise}>
+                    Add exercise
+                  </Button>
+                </div>
               </div>
             )}
           </div>

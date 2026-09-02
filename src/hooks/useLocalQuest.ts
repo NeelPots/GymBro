@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import {
   levelFromXp,
   rankTitle,
+  streakBonusXp,
   XP_PER_SESSION,
   XP_PROGRESS_BONUS,
   XP_REDEMPTION,
-  XP_STREAK_BONUS,
 } from "@/lib/gamification/rank";
 import { allocateStat, DEFAULT_STATS, pointsAwardedForLevels, type Stats } from "@/lib/gamification/stats";
 import { DEFAULT_QUESTS, QUEST_BUFFS, type CustomQuest, type QuestCategory } from "@/lib/gamification/quests";
@@ -44,9 +44,16 @@ const COINS_PER_QUEST = 10;
 const GEMS_PER_LEVEL_UP = 1;
 const GEMS_PER_TITLE_UNLOCK = 3;
 
+/** Weighted toward running - it's the default Penalty Zone consequence, with a few non-running fallbacks for variety. */
 const EMERGENCY_OBJECTIVES = [
-  "Complete Emergency 10km Night Run.",
-  "Complete Emergency 200 Burpees.",
+  "Run 5km outside - no treadmill, no shortcuts.",
+  "Run 3 miles at a steady pace.",
+  "Run 30 minutes continuous, any pace, keep moving.",
+  "Sprint 400m x 8, walk 1 minute to recover between each.",
+  "Run 2km, then drop for 50 burpees.",
+  "Run/walk 8000 steps outside within the window.",
+  "200 Burpees, any pace, no time limit but no stopping long.",
+  "100 Push-ups + 100 Squats, split however you need.",
 ];
 
 export interface PenaltyRecord {
@@ -126,11 +133,6 @@ function yesterdayDateString(): string {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return d.toISOString().slice(0, 10);
-}
-
-/** Parses a "YYYY-MM-DD" date string at local noon, avoiding UTC-midnight timezone boundary shifts. */
-function parseDateStringAtNoon(dateString: string): Date {
-  return new Date(`${dateString}T12:00:00`);
 }
 
 function seedRoutinesAndSteps(): { routines: Routine[]; steps: RoutineStep[] } {
@@ -310,9 +312,13 @@ function tick(state: QuestState, now: number = Date.now()): QuestState {
 
   const today = todayDateString();
   if (next.lastQuestDate !== today) {
-    const endedDay = parseDateStringAtNoon(next.lastQuestDate);
-    const dueSteps = next.steps.filter((s) => isStepDueToday(s, endedDay, next.lastCompletedAt[s.id]));
-    const allDone = dueSteps.length === 0 || dueSteps.every((s) => next.completedToday.includes(s.id));
+    // Only daily-schedule steps are "mandatory" for the Penalty Zone - a
+    // step that's every-3-days or weekday-only is never due every single
+    // day, so it can never fairly cause a penalty just because today wasn't
+    // its day. (isStepDueToday still governs what shows as actionable in
+    // the checklist; this is specifically about what's penalty-eligible.)
+    const mandatorySteps = next.steps.filter((s) => s.schedule.kind === "daily");
+    const allDone = mandatorySteps.length === 0 || mandatorySteps.every((s) => next.completedToday.includes(s.id));
     let log = appendLog(next.log, "SYSTEM: Daily reset. New quests assigned.", "info");
     let emergencyPenalty = next.emergencyPenalty;
 
@@ -455,7 +461,7 @@ export function useLocalQuest() {
       if (!prev) return prev;
 
       if (currentStreak > prev.lastStreakSeen) {
-        const { next: withXp } = applyXpGain(prev, XP_STREAK_BONUS, Date.now());
+        const { next: withXp } = applyXpGain(prev, streakBonusXp(currentStreak), Date.now());
         let next = { ...withXp, lastStreakSeen: currentStreak };
 
         for (const milestone of milestonesReached(currentStreak, next.titles)) {
@@ -553,6 +559,16 @@ export function useLocalQuest() {
     setQuest((prev) => {
       if (!prev) return prev;
       return saveQuest({ ...prev, routines: prev.routines.map((r) => (r.id === routineId ? { ...r, name } : r)) });
+    });
+  }, []);
+
+  const toggleRoutineCollapsed = useCallback((routineId: string) => {
+    setQuest((prev) => {
+      if (!prev) return prev;
+      return saveQuest({
+        ...prev,
+        routines: prev.routines.map((r) => (r.id === routineId ? { ...r, collapsed: !r.collapsed } : r)),
+      });
     });
   }, []);
 
@@ -782,6 +798,7 @@ export function useLocalQuest() {
     createRoutine,
     renameRoutine,
     deleteRoutine,
+    toggleRoutineCollapsed,
     createStep,
     updateStep,
     deleteStep,

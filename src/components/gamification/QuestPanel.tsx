@@ -36,6 +36,7 @@ export function QuestPanel() {
           onAddStep={() => setStepEditor({ routineId: routine.id, step: null })}
           onRename={(name) => quest.renameRoutine(routine.id, name)}
           onDelete={() => quest.deleteRoutine(routine.id)}
+          onToggleCollapsed={() => quest.toggleRoutineCollapsed(routine.id)}
         />
       ))}
 

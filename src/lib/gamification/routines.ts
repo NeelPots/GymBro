@@ -11,6 +11,8 @@ export interface Routine {
   id: string;
   name: string;
   createdAt: string;
+  /** Whether the routine's steps are hidden behind a collapsed header - a per-routine, persisted UI preference. */
+  collapsed?: boolean;
 }
 
 export type ScheduleKind = "daily" | "weekdays" | "interval";
