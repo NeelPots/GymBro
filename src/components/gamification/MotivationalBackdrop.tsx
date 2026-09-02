@@ -31,6 +31,34 @@ const QUOTES = [
   "Discipline outlasts motivation every time.",
 ];
 
+/**
+ * A compact "system log" chip - the mobile/tablet equivalent of the
+ * desktop SystemPanel. Mobile has no real gutter space to decorate, so
+ * instead of a poster-style quote this reads like a terminal line: a
+ * cut-corner glass chip, a pulsing status dot, and small glowing
+ * monospace text, echoing the same System-window language as the rest of
+ * the HUD instead of looking like a separate motivational-poster layer.
+ */
+function SystemLogLine({ text, tone }: { text: string; tone: "signal" | "progress" }) {
+  const color = tone === "signal" ? "text-signal" : "text-progress";
+  const border = tone === "signal" ? "border-signal/25" : "border-progress/25";
+  const dot = tone === "signal" ? "bg-signal" : "bg-progress";
+  return (
+    <div
+      className={cn("flex w-fit max-w-[88%] items-start gap-2 border bg-background/30 px-3 py-1.5 backdrop-blur-[1px] sm:max-w-[70%]", border)}
+      style={{ clipPath: "polygon(9px 0, 100% 0, 100% 100%, calc(100% - 9px) 100%, 0 100%, 0 9px)" }}
+    >
+      <span className={cn("mt-1 size-1.5 shrink-0 animate-hud-blink-cursor rounded-full", dot)} />
+      <span
+        className={cn("font-mono text-[10px] font-semibold uppercase leading-snug tracking-wide sm:text-[11px]", color)}
+        style={{ textShadow: "0 0 8px currentColor" }}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
 /** Angular targeting-reticle corner marks - a recurring "system window" motif. */
 function CornerBrackets({ className, tone = "signal" }: { className?: string; tone?: "signal" | "progress" }) {
   const color = tone === "signal" ? "border-signal/60" : "border-progress/60";
@@ -192,18 +220,23 @@ export function MotivationalBackdrop() {
         return (
         <div
           key={i}
-          className={cn("absolute left-1/2 -translate-x-1/2", isCompact ? "w-full" : "w-[118%]")}
+          className="absolute"
           style={{
             top: band.top,
+            left: "50%",
+            width: isCompact ? "100%" : "118%",
             transform: isCompact ? "translateX(-50%)" : `translateX(-50%) rotate(${band.rotate})`,
           }}
         >
+          <div className="flex justify-center py-1.5 lg:hidden">
+            <SystemLogLine text={quotes[i]} tone={band.tone} />
+          </div>
           <div
             className={
-              "py-2 text-center font-display text-base font-bold tracking-wide uppercase sm:py-3 sm:text-2xl lg:py-3 lg:text-3xl " +
+              "hidden py-3 text-center font-display font-bold uppercase tracking-wide lg:block lg:text-3xl " +
               (band.tone === "signal"
-                ? "bg-gradient-to-r from-transparent via-signal/10 to-transparent text-signal/40 sm:via-signal/15 sm:text-signal/60 lg:via-signal/10 lg:text-signal/25"
-                : "bg-gradient-to-r from-transparent via-progress/10 to-transparent text-progress/35 sm:via-progress/15 sm:text-progress/55 lg:via-progress/10 lg:text-progress/20")
+                ? "bg-gradient-to-r from-transparent via-signal/10 to-transparent text-signal/25"
+                : "bg-gradient-to-r from-transparent via-progress/10 to-transparent text-progress/20")
             }
           >
             {quotes[i]}
