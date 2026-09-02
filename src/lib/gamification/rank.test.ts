@@ -12,15 +12,15 @@ import {
 describe("xpRequiredForLevel", () => {
   it("increases exponentially with level", () => {
     expect(xpRequiredForLevel(1)).toBe(100);
-    expect(xpRequiredForLevel(2)).toBe(118);
-    expect(xpRequiredForLevel(3)).toBe(139);
-    expect(xpRequiredForLevel(5)).toBe(194);
+    expect(xpRequiredForLevel(2)).toBe(108);
+    expect(xpRequiredForLevel(3)).toBe(117);
+    expect(xpRequiredForLevel(5)).toBe(136);
   });
 
   it("grows faster (multiplicatively) at higher levels than a flat linear curve would", () => {
     const earlyJump = xpRequiredForLevel(2) - xpRequiredForLevel(1);
-    const lateJump = xpRequiredForLevel(20) - xpRequiredForLevel(19);
-    expect(lateJump).toBeGreaterThan(earlyJump * 5);
+    const lateJump = xpRequiredForLevel(40) - xpRequiredForLevel(39);
+    expect(lateJump).toBeGreaterThan(earlyJump * 10);
   });
 });
 
@@ -34,12 +34,12 @@ describe("levelFromXp", () => {
   });
 
   it("advances to level 2 exactly at the threshold", () => {
-    expect(levelFromXp(100)).toEqual({ level: 2, xpIntoLevel: 0, xpForNext: 118 });
+    expect(levelFromXp(100)).toEqual({ level: 2, xpIntoLevel: 0, xpForNext: 108 });
   });
 
   it("carries remaining xp into the next level's progress", () => {
-    // level 1 costs 100, level 2 costs 118 -> 250 total lands mid-level-3
-    expect(levelFromXp(250)).toEqual({ level: 3, xpIntoLevel: 32, xpForNext: 139 });
+    // level 1 costs 100, level 2 costs 108 -> 250 total lands mid-level-3
+    expect(levelFromXp(250)).toEqual({ level: 3, xpIntoLevel: 42, xpForNext: 117 });
   });
 });
 
@@ -63,31 +63,31 @@ describe("streakBonusXp", () => {
 describe("rankTitle", () => {
   it("maps level ranges to the right rank", () => {
     expect(rankTitle(1)).toBe("E-Rank Trainee");
-    expect(rankTitle(4)).toBe("E-Rank Trainee");
-    expect(rankTitle(5)).toBe("D-Rank Hunter");
-    expect(rankTitle(9)).toBe("D-Rank Hunter");
-    expect(rankTitle(10)).toBe("C-Rank Hunter");
-    expect(rankTitle(14)).toBe("C-Rank Hunter");
-    expect(rankTitle(15)).toBe("B-Rank Hunter");
-    expect(rankTitle(19)).toBe("B-Rank Hunter");
-    expect(rankTitle(20)).toBe("A-Rank Hunter");
-    expect(rankTitle(29)).toBe("A-Rank Hunter");
-    expect(rankTitle(30)).toBe("S-Rank Hunter");
-    expect(rankTitle(99)).toBe("S-Rank Hunter");
+    expect(rankTitle(15)).toBe("E-Rank Trainee");
+    expect(rankTitle(16)).toBe("D-Rank Hunter");
+    expect(rankTitle(27)).toBe("D-Rank Hunter");
+    expect(rankTitle(28)).toBe("C-Rank Hunter");
+    expect(rankTitle(37)).toBe("C-Rank Hunter");
+    expect(rankTitle(38)).toBe("B-Rank Hunter");
+    expect(rankTitle(49)).toBe("B-Rank Hunter");
+    expect(rankTitle(50)).toBe("A-Rank Hunter");
+    expect(rankTitle(64)).toBe("A-Rank Hunter");
+    expect(rankTitle(65)).toBe("S-Rank Hunter");
+    expect(rankTitle(200)).toBe("S-Rank Hunter");
   });
 });
 
 describe("nextRankTier", () => {
   it("finds the next tier up", () => {
-    expect(nextRankTier(1)).toEqual({ minLevel: 5, title: "D-Rank Hunter" });
-    expect(nextRankTier(4)).toEqual({ minLevel: 5, title: "D-Rank Hunter" });
-    expect(nextRankTier(5)).toEqual({ minLevel: 10, title: "C-Rank Hunter" });
-    expect(nextRankTier(29)).toEqual({ minLevel: 30, title: "S-Rank Hunter" });
+    expect(nextRankTier(1)).toEqual({ minLevel: 16, title: "D-Rank Hunter" });
+    expect(nextRankTier(15)).toEqual({ minLevel: 16, title: "D-Rank Hunter" });
+    expect(nextRankTier(16)).toEqual({ minLevel: 28, title: "C-Rank Hunter" });
+    expect(nextRankTier(64)).toEqual({ minLevel: 65, title: "S-Rank Hunter" });
   });
 
   it("returns null once at the top rank", () => {
-    expect(nextRankTier(30)).toBeNull();
-    expect(nextRankTier(99)).toBeNull();
+    expect(nextRankTier(65)).toBeNull();
+    expect(nextRankTier(200)).toBeNull();
   });
 });
 
@@ -96,10 +96,10 @@ describe("hoursForLevel", () => {
     expect(hoursForLevel(1)).toBe(0);
   });
 
-  it("increases for higher levels", () => {
-    const d = hoursForLevel(5);
-    const c = hoursForLevel(10);
-    const b = hoursForLevel(15);
+  it("increases for higher levels, tracking the rank climb", () => {
+    const d = hoursForLevel(16);
+    const c = hoursForLevel(28);
+    const b = hoursForLevel(38);
     expect(d).toBeGreaterThan(0);
     expect(c).toBeGreaterThan(d);
     expect(b).toBeGreaterThan(c);

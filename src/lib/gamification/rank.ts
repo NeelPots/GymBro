@@ -12,13 +12,16 @@ export const XP_REDEMPTION = 50;
 export const STREAK_BONUS_CAP_DAYS = 30;
 
 /**
- * XP required to go from `level` to `level + 1`. Genuinely exponential
- * (18% compounding per level) rather than linear or quadratic: level 1->2
- * is still a friendly 100 XP, but the curve compounds hard at the top, so
- * S-Rank (level 30) takes a real long-term grind instead of a good month.
+ * XP required to go from `level` to `level + 1`. Exponential (8%
+ * compounding per level) across a much longer level range than before -
+ * tuned so a hunter doing just the daily routine consistently (roughly
+ * 350-400 XP/day from quests + the streak bonus) takes about a week to
+ * reach D-Rank (level 16), and each rank above that takes meaningfully
+ * longer than the last: ~3-4 weeks to C, ~2 months to B, ~5 months to A,
+ * over a year of sustained consistency to reach S-Rank at level 65.
  */
 export function xpRequiredForLevel(level: number): number {
-  return Math.round(100 * 1.18 ** (level - 1));
+  return Math.round(100 * 1.08 ** (level - 1));
 }
 
 /**
@@ -56,11 +59,11 @@ export interface RankTier {
 }
 
 export const RANK_THRESHOLDS: RankTier[] = [
-  { minLevel: 30, title: "S-Rank Hunter" },
-  { minLevel: 20, title: "A-Rank Hunter" },
-  { minLevel: 15, title: "B-Rank Hunter" },
-  { minLevel: 10, title: "C-Rank Hunter" },
-  { minLevel: 5, title: "D-Rank Hunter" },
+  { minLevel: 65, title: "S-Rank Hunter" },
+  { minLevel: 50, title: "A-Rank Hunter" },
+  { minLevel: 38, title: "B-Rank Hunter" },
+  { minLevel: 28, title: "C-Rank Hunter" },
+  { minLevel: 16, title: "D-Rank Hunter" },
   { minLevel: 1, title: "E-Rank Trainee" },
 ];
 
