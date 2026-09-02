@@ -9,10 +9,17 @@ import {
 } from "./rank";
 
 describe("xpRequiredForLevel", () => {
-  it("increases gently with level", () => {
+  it("increases quadratically with level", () => {
     expect(xpRequiredForLevel(1)).toBe(100);
-    expect(xpRequiredForLevel(2)).toBe(125);
-    expect(xpRequiredForLevel(5)).toBe(200);
+    expect(xpRequiredForLevel(2)).toBe(130);
+    expect(xpRequiredForLevel(3)).toBe(170);
+    expect(xpRequiredForLevel(5)).toBe(280);
+  });
+
+  it("grows faster at higher levels than a flat linear curve would", () => {
+    const earlyJump = xpRequiredForLevel(2) - xpRequiredForLevel(1);
+    const lateJump = xpRequiredForLevel(20) - xpRequiredForLevel(19);
+    expect(lateJump).toBeGreaterThan(earlyJump);
   });
 });
 
@@ -26,12 +33,12 @@ describe("levelFromXp", () => {
   });
 
   it("advances to level 2 exactly at the threshold", () => {
-    expect(levelFromXp(100)).toEqual({ level: 2, xpIntoLevel: 0, xpForNext: 125 });
+    expect(levelFromXp(100)).toEqual({ level: 2, xpIntoLevel: 0, xpForNext: 130 });
   });
 
   it("carries remaining xp into the next level's progress", () => {
-    // level 1 costs 100, level 2 costs 125 -> 250 total lands mid-level-3
-    expect(levelFromXp(250)).toEqual({ level: 3, xpIntoLevel: 25, xpForNext: 150 });
+    // level 1 costs 100, level 2 costs 130 -> 250 total lands mid-level-3
+    expect(levelFromXp(250)).toEqual({ level: 3, xpIntoLevel: 20, xpForNext: 170 });
   });
 });
 

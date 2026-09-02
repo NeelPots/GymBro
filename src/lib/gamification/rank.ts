@@ -9,9 +9,14 @@ export const XP_PROGRESS_BONUS = 75;
 export const XP_STREAK_BONUS = 10;
 export const XP_REDEMPTION = 50;
 
-/** XP required to go from `level` to `level + 1`. Gently increasing. */
+/**
+ * XP required to go from `level` to `level + 1`. Quadratic, not linear: the
+ * per-level jump itself grows, so early levels stay approachable while
+ * chasing S-Rank at level 30 takes a genuinely long grind (~4x the total XP
+ * of a flat +25/level curve) rather than a couple of good weeks.
+ */
 export function xpRequiredForLevel(level: number): number {
-  return 100 + (level - 1) * 25;
+  return 100 + (level - 1) * 25 + (level - 1) ** 2 * 5;
 }
 
 export interface LevelInfo {
