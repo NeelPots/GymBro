@@ -14,7 +14,7 @@ export function XpBar({ xpIntoLevel, xpForNext }: XpBarProps) {
           className="h-full rounded-full bg-signal"
           style={{
             width: `${pct}%`,
-            boxShadow: "0 0 6px rgba(0,243,255,0.5)",
+            boxShadow: "0 0 8px rgba(51,170,255,0.6)",
           }}
         />
       </div>

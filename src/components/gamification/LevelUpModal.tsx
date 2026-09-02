@@ -76,7 +76,7 @@ export function LevelUpModal() {
           ))}
         </div>
 
-        <div className="relative flex size-24 items-center justify-center rounded-full border-2 border-signal bg-signal/10 text-signal shadow-[0_0_40px_rgba(0,243,255,0.55)] animate-hud-pulse-glow">
+        <div className="relative flex size-24 items-center justify-center rounded-full border-2 border-signal bg-signal/10 text-signal shadow-[0_0_40px_rgba(51,170,255,0.6)] animate-hud-pulse-glow">
           <Swords size={40} strokeWidth={1.75} />
         </div>
 

@@ -13,7 +13,7 @@ export function ResourceBars({ hp, hpMax, stamina, staminaMax }: ResourceBarsPro
   return (
     <div className="flex flex-col gap-2">
       <ResourceBar label="HP" current={hp} max={hpMax} pct={hpPct} color="#ff0055" />
-      <ResourceBar label="STAMINA" current={stamina} max={staminaMax} pct={staminaPct} color="#00f3ff" />
+      <ResourceBar label="STAMINA" current={stamina} max={staminaMax} pct={staminaPct} color="#33aaff" />
     </div>
   );
 }

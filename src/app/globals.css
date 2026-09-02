@@ -58,83 +58,83 @@
 
 :root {
   /* System HUD - deep-void neon theme, dark-first by design (no light toggle yet) */
-  --background: #030712;
+  --background: #050b22;
   --foreground: #eaf6ff;
-  --card: #0a1120;
+  --card: #0c1938;
   --card-foreground: #eaf6ff;
-  --popover: #0d1526;
+  --popover: #0f1c3f;
   --popover-foreground: #eaf6ff;
-  --primary: #00f3ff;
+  --primary: #33aaff;
   --primary-foreground: #021014;
-  --secondary: #0a1120;
+  --secondary: #0c1938;
   --secondary-foreground: #8fa8c9;
-  --muted: #101a30;
+  --muted: #16264f;
   --muted-foreground: #7d93b3;
-  --accent: #101a30;
+  --accent: #16264f;
   --accent-foreground: #eaf6ff;
   --destructive: #ff0055;
-  --border: #17233a;
-  --input: #17233a;
-  --ring: #00f3ff;
-  --chart-1: #00f3ff;
+  --border: #22335f;
+  --input: #22335f;
+  --ring: #33aaff;
+  --chart-1: #33aaff;
   --chart-2: #39ff8a;
   --chart-3: #ffb020;
   --chart-4: #7c5cff;
   --chart-5: #7d93b3;
   --radius: 0.5rem;
-  --sidebar: #0a1120;
+  --sidebar: #0c1938;
   --sidebar-foreground: #eaf6ff;
-  --sidebar-primary: #00f3ff;
+  --sidebar-primary: #33aaff;
   --sidebar-primary-foreground: #021014;
-  --sidebar-accent: #101a30;
+  --sidebar-accent: #16264f;
   --sidebar-accent-foreground: #eaf6ff;
-  --sidebar-border: #17233a;
-  --sidebar-ring: #00f3ff;
+  --sidebar-border: #22335f;
+  --sidebar-ring: #33aaff;
 
   /* Signature tokens */
-  --surface: #0a1120;
-  --surface-2: #101a30;
-  --signal: #00f3ff;
+  --surface: #0c1938;
+  --surface-2: #16264f;
+  --signal: #33aaff;
   --progress: #39ff8a;
   --deload: #ffb020;
   --subtle: #5c7291;
 }
 
 .dark {
-  --background: #030712;
+  --background: #050b22;
   --foreground: #eaf6ff;
-  --card: #0a1120;
+  --card: #0c1938;
   --card-foreground: #eaf6ff;
-  --popover: #0d1526;
+  --popover: #0f1c3f;
   --popover-foreground: #eaf6ff;
-  --primary: #00f3ff;
+  --primary: #33aaff;
   --primary-foreground: #021014;
-  --secondary: #0a1120;
+  --secondary: #0c1938;
   --secondary-foreground: #8fa8c9;
-  --muted: #101a30;
+  --muted: #16264f;
   --muted-foreground: #7d93b3;
-  --accent: #101a30;
+  --accent: #16264f;
   --accent-foreground: #eaf6ff;
   --destructive: #ff0055;
-  --border: #17233a;
-  --input: #17233a;
-  --ring: #00f3ff;
-  --chart-1: #00f3ff;
+  --border: #22335f;
+  --input: #22335f;
+  --ring: #33aaff;
+  --chart-1: #33aaff;
   --chart-2: #39ff8a;
   --chart-3: #ffb020;
   --chart-4: #7c5cff;
   --chart-5: #7d93b3;
-  --sidebar: #0a1120;
+  --sidebar: #0c1938;
   --sidebar-foreground: #eaf6ff;
-  --sidebar-primary: #00f3ff;
+  --sidebar-primary: #33aaff;
   --sidebar-primary-foreground: #021014;
-  --sidebar-accent: #101a30;
+  --sidebar-accent: #16264f;
   --sidebar-accent-foreground: #eaf6ff;
-  --sidebar-border: #17233a;
-  --sidebar-ring: #00f3ff;
-  --surface: #0a1120;
-  --surface-2: #101a30;
-  --signal: #00f3ff;
+  --sidebar-border: #22335f;
+  --sidebar-ring: #33aaff;
+  --surface: #0c1938;
+  --surface-2: #16264f;
+  --signal: #33aaff;
   --progress: #39ff8a;
   --deload: #ffb020;
   --subtle: #5c7291;
@@ -157,16 +157,16 @@
 @layer utilities {
   .hud-panel {
     position: relative;
-    background: linear-gradient(180deg, rgba(0, 243, 255, 0.05), rgba(0, 243, 255, 0) 60%), var(--surface);
-    border: 1px solid rgba(0, 243, 255, 0.22);
+    background: linear-gradient(180deg, rgba(51, 170, 255, 0.07), rgba(51, 170, 255, 0) 60%), var(--surface);
+    border: 1px solid rgba(51, 170, 255, 0.3);
     box-shadow:
-      0 0 0 1px rgba(0, 243, 255, 0.04) inset,
-      0 0 18px rgba(0, 243, 255, 0.06);
+      0 0 0 1px rgba(51, 170, 255, 0.06) inset,
+      0 0 22px rgba(51, 170, 255, 0.1);
     backdrop-filter: blur(6px);
   }
 
   .hud-glow-text {
-    text-shadow: 0 0 10px rgba(0, 243, 255, 0.55);
+    text-shadow: 0 0 12px rgba(51, 170, 255, 0.65);
   }
 
   .hud-alarm-panel {

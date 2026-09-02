@@ -82,12 +82,12 @@ function RadarRing() {
       <div
         className="absolute inset-0 animate-hud-radar-sweep rounded-full"
         style={{
-          background: "conic-gradient(from 0deg, rgba(0,243,255,0.55), transparent 30%)",
+          background: "conic-gradient(from 0deg, rgba(51,170,255,0.55), transparent 30%)",
           maskImage: "radial-gradient(circle, transparent 54%, black 56%)",
           WebkitMaskImage: "radial-gradient(circle, transparent 54%, black 56%)",
         }}
       />
-      <div className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-signal shadow-[0_0_10px_2px_rgba(0,243,255,0.85)]" />
+      <div className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-signal shadow-[0_0_10px_2px_rgba(51,170,255,0.85)]" />
     </div>
   );
 }
@@ -104,14 +104,14 @@ function SystemPanel({ className }: { className?: string }) {
   return (
     <div
       className={cn("relative border border-signal/30 bg-background/50 backdrop-blur-sm", className)}
-      style={{ clipPath: clip, boxShadow: "0 0 28px rgba(0,243,255,0.14), inset 0 0 32px rgba(0,243,255,0.05)" }}
+      style={{ clipPath: clip, boxShadow: "0 0 28px rgba(51,170,255,0.14), inset 0 0 32px rgba(51,170,255,0.05)" }}
       aria-hidden="true"
     >
       <div className="absolute inset-0 overflow-hidden opacity-25" style={{ clipPath: clip }}>
         <div
           className="absolute inset-x-0 h-12"
           style={{
-            background: "linear-gradient(180deg, transparent, rgba(0,243,255,0.9), transparent)",
+            background: "linear-gradient(180deg, transparent, rgba(51,170,255,0.9), transparent)",
             animation: "hud-scanline 4.5s linear infinite",
           }}
         />

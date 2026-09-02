@@ -10,20 +10,20 @@ export function HudGridOverlay() {
         className="absolute inset-0 opacity-40"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(0,243,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,243,255,0.05) 1px, transparent 1px)",
+            "linear-gradient(rgba(51,170,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(51,170,255,0.07) 1px, transparent 1px)",
           backgroundSize: "38px 38px",
         }}
       />
       <div
         className="absolute inset-x-0 h-32 opacity-[0.06]"
         style={{
-          background: "linear-gradient(180deg, transparent, rgba(0,243,255,0.9), transparent)",
+          background: "linear-gradient(180deg, transparent, rgba(51,170,255,0.95), transparent)",
           animation: "hud-scanline 9s linear infinite",
         }}
       />
       <div
         className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at 50% -10%, rgba(0,243,255,0.08), transparent 55%)" }}
+        style={{ background: "radial-gradient(ellipse at 50% -10%, rgba(51,170,255,0.12), transparent 55%)" }}
       />
     </div>
   );

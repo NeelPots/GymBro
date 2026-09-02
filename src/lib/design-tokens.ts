@@ -4,14 +4,14 @@
  * custom properties in src/app/globals.css.
  */
 export const tokens = {
-  background: "#030712",
-  surface: "#0A1120",
-  surface2: "#101A30",
-  border: "#17233A",
+  background: "#050B22",
+  surface: "#0C1938",
+  surface2: "#16264F",
+  border: "#22335F",
   textPrimary: "#EAF6FF",
   textSecondary: "#8FA8C9",
   textTertiary: "#5C7291",
-  signal: "#00F3FF",
+  signal: "#33AAFF",
   progress: "#39FF8A",
   deload: "#FFB020",
   penalty: "#FF0055",

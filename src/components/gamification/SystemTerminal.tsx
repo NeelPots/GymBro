@@ -31,7 +31,7 @@ export function SystemTerminal() {
   return (
     <div className="fixed right-3 bottom-20 z-30 flex w-[min(20rem,calc(100vw-1.5rem))] flex-col items-end lg:right-6 lg:bottom-6">
       {expanded && (
-        <div className="mb-2 w-full overflow-hidden rounded-md border border-signal/25 bg-background/95 shadow-[0_0_24px_rgba(0,243,255,0.12)] backdrop-blur-md">
+        <div className="mb-2 w-full overflow-hidden rounded-md border border-signal/25 bg-background/95 shadow-[0_0_24px_rgba(51,170,255,0.16)] backdrop-blur-md">
           <div className="flex items-center justify-between border-b border-signal/15 px-3 py-1.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-signal">System Feed</span>
           </div>
@@ -57,7 +57,7 @@ export function SystemTerminal() {
           setExpanded((v) => !v);
         }}
         aria-label={expanded ? "Collapse system feed" : "Expand system feed"}
-        className="flex items-center gap-1.5 rounded-md border border-signal/30 bg-surface/90 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-signal shadow-[0_0_16px_rgba(0,243,255,0.1)] backdrop-blur-md transition-colors hover:bg-surface-2"
+        className="flex items-center gap-1.5 rounded-md border border-signal/30 bg-surface/90 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-signal shadow-[0_0_16px_rgba(51,170,255,0.14)] backdrop-blur-md transition-colors hover:bg-surface-2"
       >
         <Terminal size={12} />
         <span className={cn("max-w-40 truncate", expanded && "hidden sm:inline")}>
