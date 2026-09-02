@@ -31,51 +31,82 @@ const QUOTES = [
   "Discipline outlasts motivation every time.",
 ];
 
-function FlexFigure({ className }: { className?: string }) {
+/** Angular targeting-reticle corner marks - a recurring "system window" motif. */
+function CornerBrackets({ className, tone = "signal" }: { className?: string; tone?: "signal" | "progress" }) {
+  const color = tone === "signal" ? "border-signal/60" : "border-progress/60";
   return (
-    <svg viewBox="0 0 120 150" className={className} fill="none">
-      <circle cx="60" cy="16" r="12" fill="currentColor" />
-      <polygon points="40,32 80,32 74,90 46,90" fill="currentColor" />
-      <rect x="44" y="88" width="32" height="14" rx="6" fill="currentColor" />
-      <rect x="42" y="100" width="16" height="48" rx="8" fill="currentColor" />
-      <rect x="62" y="100" width="16" height="48" rx="8" fill="currentColor" />
-      <g stroke="currentColor" strokeLinecap="round">
-        <line x1="40" y1="40" x2="20" y2="62" strokeWidth="14" />
-        <line x1="20" y1="62" x2="34" y2="34" strokeWidth="13" />
-        <line x1="80" y1="40" x2="100" y2="62" strokeWidth="14" />
-        <line x1="100" y1="62" x2="86" y2="34" strokeWidth="13" />
-      </g>
-      <circle cx="34" cy="34" r="9" fill="currentColor" />
-      <circle cx="86" cy="34" r="9" fill="currentColor" />
-    </svg>
+    <div className={cn("pointer-events-none absolute", className)} aria-hidden="true">
+      <span className={cn("absolute left-0 top-0 size-4 border-l-2 border-t-2", color)} />
+      <span className={cn("absolute right-0 top-0 size-4 border-r-2 border-t-2", color)} />
+      <span className={cn("absolute bottom-0 left-0 size-4 border-b-2 border-l-2", color)} />
+      <span className={cn("absolute bottom-0 right-0 size-4 border-b-2 border-r-2", color)} />
+    </div>
   );
 }
 
-function RunnerFigure({ className }: { className?: string }) {
+/** A slow-rotating radar sweep with a pulsing blip - pure CSS, no assets. */
+function RadarRing() {
   return (
-    <svg viewBox="0 0 140 150" className={className} fill="none">
-      <g stroke="currentColor" strokeLinecap="round" opacity="0.5">
-        <line x1="14" y1="70" x2="34" y2="66" strokeWidth="3" />
-        <line x1="10" y1="80" x2="32" y2="78" strokeWidth="3" />
-        <line x1="14" y1="90" x2="34" y2="90" strokeWidth="3" />
-      </g>
-      <circle cx="78" cy="18" r="11" fill="currentColor" />
-      <polygon points="70,30 92,34 82,86 62,82" fill="currentColor" />
-      <g stroke="currentColor" strokeLinecap="round">
-        <line x1="72" y1="84" x2="50" y2="100" strokeWidth="15" />
-        <line x1="50" y1="100" x2="58" y2="130" strokeWidth="13" />
-        <line x1="78" y1="84" x2="100" y2="104" strokeWidth="15" />
-        <line x1="100" y1="104" x2="118" y2="118" strokeWidth="13" />
-        <line x1="68" y1="40" x2="46" y2="48" strokeWidth="12" />
-        <line x1="46" y1="48" x2="34" y2="64" strokeWidth="11" />
-        <line x1="88" y1="40" x2="104" y2="34" strokeWidth="12" />
-        <line x1="104" y1="34" x2="118" y2="44" strokeWidth="11" />
-      </g>
-      <circle cx="34" cy="64" r="7" fill="currentColor" />
-      <circle cx="118" cy="44" r="7" fill="currentColor" />
-      <ellipse cx="58" cy="134" rx="8" ry="5" fill="currentColor" />
-      <ellipse cx="122" cy="120" rx="8" ry="5" fill="currentColor" />
-    </svg>
+    <div className="relative size-24 shrink-0">
+      <div className="absolute inset-0 animate-hud-ring-pulse rounded-full border border-signal/30" />
+      <div className="absolute inset-3 rounded-full border border-signal/20" />
+      <div className="absolute inset-6 rounded-full border border-signal/15" />
+      <div
+        className="absolute inset-0 animate-hud-radar-sweep rounded-full"
+        style={{
+          background: "conic-gradient(from 0deg, rgba(0,243,255,0.55), transparent 30%)",
+          maskImage: "radial-gradient(circle, transparent 54%, black 56%)",
+          WebkitMaskImage: "radial-gradient(circle, transparent 54%, black 56%)",
+        }}
+      />
+      <div className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-signal shadow-[0_0_10px_2px_rgba(0,243,255,0.85)]" />
+    </div>
+  );
+}
+
+/**
+ * The Solo-Leveling-style "System" readout panel - an octagon-cut glass
+ * pane with a radar sweep, a scanline pass, and a live-looking status
+ * readout. Pure decoration (aria-hidden), replaces the old stick-figure
+ * illustrations with something that fits the HUD's own visual language
+ * instead of clashing with it.
+ */
+function SystemPanel({ className }: { className?: string }) {
+  const clip = "polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px)";
+  return (
+    <div
+      className={cn("relative border border-signal/30 bg-background/50 backdrop-blur-sm", className)}
+      style={{ clipPath: clip, boxShadow: "0 0 28px rgba(0,243,255,0.14), inset 0 0 32px rgba(0,243,255,0.05)" }}
+      aria-hidden="true"
+    >
+      <div className="absolute inset-0 overflow-hidden opacity-25" style={{ clipPath: clip }}>
+        <div
+          className="absolute inset-x-0 h-12"
+          style={{
+            background: "linear-gradient(180deg, transparent, rgba(0,243,255,0.9), transparent)",
+            animation: "hud-scanline 4.5s linear infinite",
+          }}
+        />
+      </div>
+      <div className="relative flex items-center gap-4 px-5 py-4">
+        <RadarRing />
+        <div className="font-mono text-[10px] uppercase tracking-widest">
+          <div className="flex items-center gap-1.5 text-signal">
+            <span className="size-1.5 animate-hud-blink-cursor rounded-full bg-progress" />
+            System // Monitor
+          </div>
+          <div className="mt-1.5 text-muted-foreground">
+            Hunter status: <span className="text-progress">active</span>
+          </div>
+          <div className="mt-0.5 text-muted-foreground">
+            Threat level: <span className="text-signal">none</span>
+          </div>
+          <div className="mt-0.5 text-muted-foreground">
+            Scanning<span className="animate-hud-blink-cursor">_</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -181,8 +212,25 @@ export function MotivationalBackdrop() {
         );
       })}
 
-      <FlexFigure className="absolute -top-2 -left-4 hidden h-56 w-auto text-signal/60 lg:block lg:h-72 xl:h-80" />
-      <RunnerFigure className="absolute -right-6 -bottom-4 hidden h-60 w-auto text-progress/55 lg:block lg:h-80 xl:h-[22rem]" />
+      <div className="absolute left-6 top-6 hidden size-40 lg:block xl:size-48">
+        <CornerBrackets className="inset-0" tone="signal" />
+        <div className="absolute left-1/2 top-1/2 h-px w-16 -translate-x-1/2 -translate-y-1/2 bg-signal/20" />
+        <div className="absolute left-1/2 top-1/2 h-16 w-px -translate-x-1/2 -translate-y-1/2 bg-signal/20" />
+      </div>
+
+      <div className="absolute bottom-72 right-8 hidden lg:block">
+        <CornerBrackets className="-inset-3" tone="progress" />
+        <SystemPanel />
+      </div>
+
+      <div className="absolute right-3 top-1/2 hidden -translate-y-1/2 lg:block">
+        <span
+          className="font-mono text-[10px] uppercase tracking-[0.35em] text-signal/20"
+          style={{ writingMode: "vertical-rl" }}
+        >
+          System Online // Hunter Log
+        </span>
+      </div>
     </div>
   );
 }
