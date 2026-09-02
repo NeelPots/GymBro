@@ -134,8 +134,8 @@ Break this down into individual scheduled steps.`;
                         kind: { type: "string", enum: ["daily", "weekdays", "interval"] },
                         weekdays: {
                           type: "array",
-                          items: { type: "integer", minimum: 0, maximum: 6 },
-                          description: "Only when kind is weekdays - 0=Sunday..6=Saturday.",
+                          items: { type: "integer", description: "0=Sunday..6=Saturday." },
+                          description: "Only when kind is weekdays - each entry 0=Sunday..6=Saturday.",
                         },
                         intervalDays: { type: "integer", description: "Only when kind is interval - days between occurrences." },
                       },
