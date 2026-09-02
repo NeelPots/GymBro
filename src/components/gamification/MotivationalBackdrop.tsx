@@ -183,6 +183,16 @@ function pickQuotes(pathname: string, dayIndex: number): string[] {
  */
 export function MotivationalBackdrop() {
   const pathname = usePathname();
+  // The band positions (BANDS' `top` percentages) were tuned against the
+  // Home page's specific card layout - on other routes (a search bar +
+  // filter pills + a dense exercise grid, a table-like history list, etc.)
+  // there's no guarantee those percentages land in an actual gap, and they
+  // were overlapping real card content there instead of decorating empty
+  // space. Only Home gets the ambient quote bands until each page has its
+  // own tuned gap positions; every route still gets the corner-bracket/
+  // radar ornament below, which is anchored to the viewport edge, not to
+  // content, so it can't collide with anything.
+  const showQuoteBands = pathname === "/home";
   const [quotes, setQuotes] = useState(() => pickQuotes(pathname ?? "/", 0));
   // Below `sm`, the content column has almost no side gutter, so the bands'
   // usual diagonal overflow reads as clipped text jammed against card edges
@@ -211,7 +221,7 @@ export function MotivationalBackdrop() {
       style={{ width: "100vw", maxWidth: "100vw" }}
       aria-hidden="true"
     >
-      {BANDS.map((band, i) => {
+      {showQuoteBands && BANDS.map((band, i) => {
         // The top band sits right where the mobile header (and the loose
         // "day streak" text just under it) lives - no page chrome down
         // there is guaranteed to be tall/opaque enough to fully clear it,
