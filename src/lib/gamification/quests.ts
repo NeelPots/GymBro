@@ -9,6 +9,14 @@ export const QUEST_CATEGORY_LABELS: Record<QuestCategory, string> = {
   work: "Work/Code",
 };
 
+/** Which attribute a category's steps train - the stat-allocation side of the category picker. */
+export const CATEGORY_STAT: Record<QuestCategory, keyof Stats> = {
+  fitness: "str",
+  care: "vit",
+  nutrition: "vit",
+  work: "int",
+};
+
 export interface QuestDef {
   id: string;
   name: string;
@@ -75,18 +83,6 @@ export interface CustomQuest {
   category: QuestCategory;
   statReward: keyof Stats;
   createdAt: string;
-}
-
-export function customQuestToDef(q: CustomQuest): QuestDef {
-  return {
-    id: q.id,
-    name: q.name,
-    description: "Custom quest",
-    exp: q.exp,
-    category: q.category,
-    statReward: q.statReward,
-    isDefault: false,
-  };
 }
 
 /** A completed quest can grant a short-lived status effect on top of its EXP. */

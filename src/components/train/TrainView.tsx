@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { GoalPicker } from "./GoalPicker";
 import { ActiveProgramView } from "./ActiveProgramView";
 import { SplitsView } from "./SplitsView";
+import { RoutineGenerator } from "./RoutineGenerator";
 import { useLocalProgram } from "@/hooks/useLocalProgram";
 import { useLocalSplit } from "@/hooks/useLocalSplit";
 import { useActivePlanSource } from "@/hooks/useActivePlanSource";
@@ -14,6 +15,7 @@ import type { Exercise } from "@/lib/types/domain";
 const TABS = [
   { value: "ai", label: "AI Coach" },
   { value: "splits", label: "My Splits" },
+  { value: "routines", label: "Routines" },
 ] as const;
 
 type Tab = (typeof TABS)[number]["value"];
@@ -47,8 +49,8 @@ export function TrainView({ exercises }: { exercises: Exercise[] }) {
         ))}
       </div>
 
-      {tab === "ai" ? (
-        program ? (
+      {tab === "ai" &&
+        (program ? (
           <ActiveProgramView
             program={program}
             exercises={exercises}
@@ -63,8 +65,9 @@ export function TrainView({ exercises }: { exercises: Exercise[] }) {
               setSource("ai");
             }}
           />
-        )
-      ) : (
+        ))}
+
+      {tab === "splits" && (
         <SplitsView
           exercises={exercises}
           days={days}
@@ -79,6 +82,8 @@ export function TrainView({ exercises }: { exercises: Exercise[] }) {
           }}
         />
       )}
+
+      {tab === "routines" && <RoutineGenerator />}
     </div>
   );
 }

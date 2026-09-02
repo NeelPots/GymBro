@@ -10,14 +10,14 @@ import {
   XP_STREAK_BONUS,
 } from "@/lib/gamification/rank";
 import { allocateStat, DEFAULT_STATS, pointsAwardedForLevels, type Stats } from "@/lib/gamification/stats";
+import { DEFAULT_QUESTS, QUEST_BUFFS, type CustomQuest, type QuestCategory } from "@/lib/gamification/quests";
 import {
-  customQuestToDef,
-  DEFAULT_QUESTS,
-  QUEST_BUFFS,
-  type CustomQuest,
-  type QuestCategory,
-  type QuestDef,
-} from "@/lib/gamification/quests";
+  DAILY_SCHEDULE,
+  isStepDueToday,
+  type Routine,
+  type RoutineStep,
+  type Schedule,
+} from "@/lib/gamification/routines";
 import { activeBonusPct, milestonesReached, type UnlockedTitle } from "@/lib/gamification/titles";
 import { effectiveStats as computeEffectiveStats, pruneExpired, totalXpMultiplierPct, type StatusEffect } from "@/lib/gamification/effects";
 import {
@@ -34,6 +34,8 @@ import { getCurrentUserId, pullQuestState, pushQuestState } from "@/services/gam
 
 const STORAGE_KEY = "adaptive-coach-quest-v2";
 const LEGACY_STORAGE_KEY = "adaptive-coach-quest-v1";
+const DAILY_ESSENTIALS_ROUTINE_ID = "daily-essentials";
+const MIGRATED_CUSTOM_ROUTINE_ID = "custom";
 
 const EMERGENCY_WINDOW_MS = 3 * 60 * 60 * 1000;
 const DEBUFF_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -74,6 +76,23 @@ export interface LevelUpEvent {
   rankTitle: string;
 }
 
+export interface StepWithState extends RoutineStep {
+  completed: boolean;
+  dueToday: boolean;
+}
+
+export interface RoutineWithSteps extends Routine {
+  steps: StepWithState[];
+}
+
+export interface GeneratedStepInput {
+  name: string;
+  exp: number;
+  category: QuestCategory;
+  statReward: keyof Stats;
+  schedule: Schedule;
+}
+
 interface QuestState {
   xp: number;
   lastStreakSeen: number;
@@ -81,8 +100,10 @@ interface QuestState {
   penaltyLog: PenaltyRecord[];
   stats: Stats;
   unallocatedPoints: number;
-  customQuests: CustomQuest[];
+  routines: Routine[];
+  steps: RoutineStep[];
   completedToday: string[];
+  lastCompletedAt: Record<string, string>;
   lastQuestDate: string;
   titles: UnlockedTitle[];
   activeTitleId: string | null;
@@ -107,7 +128,31 @@ function yesterdayDateString(): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Parses a "YYYY-MM-DD" date string at local noon, avoiding UTC-midnight timezone boundary shifts. */
+function parseDateStringAtNoon(dateString: string): Date {
+  return new Date(`${dateString}T12:00:00`);
+}
+
+function seedRoutinesAndSteps(): { routines: Routine[]; steps: RoutineStep[] } {
+  const now = new Date().toISOString();
+  return {
+    routines: [{ id: DAILY_ESSENTIALS_ROUTINE_ID, name: "Daily Essentials", createdAt: now }],
+    steps: DEFAULT_QUESTS.map((q) => ({
+      id: q.id,
+      routineId: DAILY_ESSENTIALS_ROUTINE_ID,
+      name: q.name,
+      description: q.description,
+      exp: q.exp,
+      category: q.category,
+      statReward: q.statReward,
+      schedule: DAILY_SCHEDULE,
+      createdAt: now,
+    })),
+  };
+}
+
 function defaultState(): QuestState {
+  const { routines, steps } = seedRoutinesAndSteps();
   return {
     xp: 0,
     lastStreakSeen: 0,
@@ -115,8 +160,10 @@ function defaultState(): QuestState {
     penaltyLog: [],
     stats: DEFAULT_STATS,
     unallocatedPoints: 0,
-    customQuests: [],
+    routines,
+    steps,
     completedToday: [],
+    lastCompletedAt: {},
     lastQuestDate: todayDateString(),
     titles: [],
     activeTitleId: null,
@@ -132,17 +179,51 @@ function defaultState(): QuestState {
   };
 }
 
+/**
+ * Pre-routines saves (v2, before this feature) had a flat `customQuests`
+ * array and relied on the static `DEFAULT_QUESTS` for everything else. This
+ * folds both into routines/steps once, keeping the original ids so
+ * completedToday/streak/buff history carries over untouched.
+ */
+function migrateLegacyQuestsToRoutines(parsed: Record<string, unknown>): { routines: Routine[]; steps: RoutineStep[] } {
+  const { routines, steps } = seedRoutinesAndSteps();
+  const legacyCustom = (parsed.customQuests as CustomQuest[] | undefined) ?? [];
+
+  if (legacyCustom.length > 0) {
+    routines.push({ id: MIGRATED_CUSTOM_ROUTINE_ID, name: "Custom Quests", createdAt: new Date().toISOString() });
+    for (const q of legacyCustom) {
+      steps.push({
+        id: q.id,
+        routineId: MIGRATED_CUSTOM_ROUTINE_ID,
+        name: q.name,
+        exp: q.exp,
+        category: q.category,
+        statReward: q.statReward,
+        schedule: DAILY_SCHEDULE,
+        createdAt: q.createdAt,
+      });
+    }
+  }
+
+  return { routines, steps };
+}
+
 function loadQuest(): QuestState {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (raw) {
     try {
-      return { ...defaultState(), ...(JSON.parse(raw) as QuestState) };
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (!parsed.routines) {
+        const { routines, steps } = migrateLegacyQuestsToRoutines(parsed);
+        return { ...defaultState(), ...parsed, routines, steps, lastCompletedAt: {} } as QuestState;
+      }
+      return { ...defaultState(), ...(parsed as unknown as QuestState) };
     } catch {
       return defaultState();
     }
   }
 
-  // Migrate v1 (xp/streak/penalty only) forward so existing hunters keep their progress.
+  // Migrate v1 (xp/streak/penalty only, predates quests entirely) forward.
   const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
   if (legacy) {
     try {
@@ -229,7 +310,9 @@ function tick(state: QuestState, now: number = Date.now()): QuestState {
 
   const today = todayDateString();
   if (next.lastQuestDate !== today) {
-    const allDone = DEFAULT_QUESTS.every((q) => next.completedToday.includes(q.id));
+    const endedDay = parseDateStringAtNoon(next.lastQuestDate);
+    const dueSteps = next.steps.filter((s) => isStepDueToday(s, endedDay, next.lastCompletedAt[s.id]));
+    const allDone = dueSteps.length === 0 || dueSteps.every((s) => next.completedToday.includes(s.id));
     let log = appendLog(next.log, "SYSTEM: Daily reset. New quests assigned.", "info");
     let emergencyPenalty = next.emergencyPenalty;
 
@@ -285,16 +368,22 @@ function applyPenaltyDrain(state: QuestState, now: number): QuestState {
   return { ...state, hp, effects: [...state.effects, debuff], emergencyPenalty: null, log };
 }
 
+function withoutKey(record: Record<string, string>, key: string): Record<string, string> {
+  const next = { ...record };
+  delete next[key];
+  return next;
+}
+
 /**
  * The System HUD gamification layer: XP, levels, stats, resources, currency,
- * quests, titles, status effects and the Penalty Zone. Local-first like
- * useLocalProgram - localStorage always works offline - and, when the user
- * is signed in and Supabase is configured, mirrors state to the
- * `hunter_state` table so it follows them across devices (last-write-wins by
- * `updatedAt`, no separate passcode). Meant to be mounted once via
- * QuestProvider and shared through context; call `syncStreak` from wherever
- * the real streak is known (see useLocalAdaptiveState) instead of passing it
- * in here.
+ * routines of scheduled steps, titles, status effects and the Penalty Zone.
+ * Local-first like useLocalProgram - localStorage always works offline -
+ * and, when the user is signed in and Supabase is configured, mirrors
+ * state to the `hunter_state` table so it follows them across devices
+ * (last-write-wins by `updatedAt`, no separate passcode). Meant to be
+ * mounted once via QuestProvider and shared through context; call
+ * `syncStreak` from wherever the real streak is known (see
+ * useLocalAdaptiveState) instead of passing it in here.
  */
 export function useLocalQuest() {
   const [quest, setQuest] = useState<QuestState | undefined>(undefined);
@@ -315,7 +404,12 @@ export function useLocalQuest() {
       if (!cloud || cancelled) return;
       if (new Date(cloud.updatedAt).getTime() <= new Date(local.updatedAt).getTime()) return;
 
-      const merged = tick({ ...defaultState(), ...(cloud.state as Partial<QuestState>) });
+      const cloudState = cloud.state as Record<string, unknown>;
+      const merged = tick(
+        cloudState.routines
+          ? ({ ...defaultState(), ...(cloudState as Partial<QuestState>) } as QuestState)
+          : ({ ...defaultState(), ...cloudState, ...migrateLegacyQuestsToRoutines(cloudState), lastCompletedAt: {} } as QuestState),
+      );
       const saved = saveQuest(merged);
       if (!cancelled) setQuest(saved);
     })();
@@ -407,59 +501,125 @@ export function useLocalQuest() {
     return result;
   }, []);
 
-  const completeQuest = useCallback((questId: string): LevelUpResult | null => {
+  const completeStep = useCallback((stepId: string): LevelUpResult | null => {
     let result: LevelUpResult | null = null;
     setQuest((prev) => {
-      if (!prev || prev.completedToday.includes(questId)) return prev;
-      const custom = prev.customQuests.find((q) => q.id === questId);
-      const def: QuestDef | undefined = DEFAULT_QUESTS.find((q) => q.id === questId) ?? (custom ? customQuestToDef(custom) : undefined);
-      if (!def) return prev;
+      if (!prev || prev.completedToday.includes(stepId)) return prev;
+      const step = prev.steps.find((s) => s.id === stepId);
+      if (!step) return prev;
 
       const now = Date.now();
-      const { next: withXp, gained, result: r } = applyXpGain(prev, def.exp, now);
+      const { next: withXp, gained, result: r } = applyXpGain(prev, step.exp, now);
       result = r;
 
-      const buff = QUEST_BUFFS[questId];
+      const buff = QUEST_BUFFS[stepId];
       const effects = buff
         ? [...withXp.effects, { id: crypto.randomUUID(), label: buff.label, kind: "buff" as const, expiresAt: new Date(now + buff.hours * 3_600_000).toISOString() }]
         : withXp.effects;
 
       const level = levelFromXp(withXp.xp).level;
       const staminaMax = maxStamina(level, computeEffectiveStats(withXp.stats, effects, now));
-      const stamina = def.category === "fitness" ? clampResource(withXp.stamina - STAMINA_COST_PER_FITNESS_QUEST, staminaMax) : withXp.stamina;
+      const stamina = step.category === "fitness" ? clampResource(withXp.stamina - STAMINA_COST_PER_FITNESS_QUEST, staminaMax) : withXp.stamina;
 
       const next: QuestState = {
         ...withXp,
-        completedToday: [...withXp.completedToday, questId],
+        completedToday: [...withXp.completedToday, stepId],
+        lastCompletedAt: { ...withXp.lastCompletedAt, [stepId]: new Date(now).toISOString() },
         effects,
         stamina,
         coins: withXp.coins + COINS_PER_QUEST,
-        log: appendLog(withXp.log, `Quest "${def.name}" completed. +${gained} EXP, +${COINS_PER_QUEST} Coins gained.`, "success"),
+        log: appendLog(withXp.log, `Quest "${step.name}" completed. +${gained} EXP, +${COINS_PER_QUEST} Coins gained.`, "success"),
       };
       return saveQuest(next);
     });
     return result;
   }, []);
 
-  const createCustomQuest = useCallback((name: string, exp: number, category: QuestCategory, statReward: keyof Stats) => {
+  const createRoutine = useCallback((name: string): string => {
+    const id = crypto.randomUUID();
     setQuest((prev) => {
       if (!prev) return prev;
-      const quest: CustomQuest = { id: crypto.randomUUID(), name, exp, category, statReward, createdAt: new Date().toISOString() };
+      const routine: Routine = { id, name, createdAt: new Date().toISOString() };
       return saveQuest({
         ...prev,
-        customQuests: [...prev.customQuests, quest],
+        routines: [...prev.routines, routine],
+        log: appendLog(prev.log, `New routine created: "${name}".`, "info"),
+      });
+    });
+    return id;
+  }, []);
+
+  const renameRoutine = useCallback((routineId: string, name: string) => {
+    setQuest((prev) => {
+      if (!prev) return prev;
+      return saveQuest({ ...prev, routines: prev.routines.map((r) => (r.id === routineId ? { ...r, name } : r)) });
+    });
+  }, []);
+
+  const deleteRoutine = useCallback((routineId: string) => {
+    setQuest((prev) => {
+      if (!prev) return prev;
+      const removedIds = new Set(prev.steps.filter((s) => s.routineId === routineId).map((s) => s.id));
+      let lastCompletedAt = prev.lastCompletedAt;
+      for (const id of removedIds) lastCompletedAt = withoutKey(lastCompletedAt, id);
+      const routine = prev.routines.find((r) => r.id === routineId);
+      return saveQuest({
+        ...prev,
+        routines: prev.routines.filter((r) => r.id !== routineId),
+        steps: prev.steps.filter((s) => s.routineId !== routineId),
+        completedToday: prev.completedToday.filter((id) => !removedIds.has(id)),
+        lastCompletedAt,
+        log: routine ? appendLog(prev.log, `Routine deleted: "${routine.name}".`, "warning") : prev.log,
+      });
+    });
+  }, []);
+
+  const createStep = useCallback((routineId: string, name: string, exp: number, category: QuestCategory, statReward: keyof Stats, schedule: Schedule) => {
+    setQuest((prev) => {
+      if (!prev) return prev;
+      const step: RoutineStep = { id: crypto.randomUUID(), routineId, name, exp, category, statReward, schedule, createdAt: new Date().toISOString() };
+      return saveQuest({
+        ...prev,
+        steps: [...prev.steps, step],
         log: appendLog(prev.log, `New quest architected: "${name}" (+${exp} EXP).`, "info"),
       });
     });
   }, []);
 
-  const deleteCustomQuest = useCallback((id: string) => {
+  const updateStep = useCallback((stepId: string, updates: Partial<Omit<RoutineStep, "id" | "createdAt">>) => {
     setQuest((prev) => {
       if (!prev) return prev;
       return saveQuest({
         ...prev,
-        customQuests: prev.customQuests.filter((q) => q.id !== id),
-        completedToday: prev.completedToday.filter((qid) => qid !== id),
+        steps: prev.steps.map((s) => (s.id === stepId ? { ...s, ...updates } : s)),
+      });
+    });
+  }, []);
+
+  const deleteStep = useCallback((stepId: string) => {
+    setQuest((prev) => {
+      if (!prev) return prev;
+      return saveQuest({
+        ...prev,
+        steps: prev.steps.filter((s) => s.id !== stepId),
+        completedToday: prev.completedToday.filter((id) => id !== stepId),
+        lastCompletedAt: withoutKey(prev.lastCompletedAt, stepId),
+      });
+    });
+  }, []);
+
+  const createRoutineFromAI = useCallback((name: string, generatedSteps: GeneratedStepInput[]) => {
+    setQuest((prev) => {
+      if (!prev) return prev;
+      const routineId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const routine: Routine = { id: routineId, name, createdAt: now };
+      const steps: RoutineStep[] = generatedSteps.map((s) => ({ id: crypto.randomUUID(), routineId, ...s, createdAt: now }));
+      return saveQuest({
+        ...prev,
+        routines: [...prev.routines, routine],
+        steps: [...prev.steps, ...steps],
+        log: appendLog(prev.log, `SYSTEM: AI-generated routine "${name}" added (${steps.length} steps).`, "success"),
       });
     });
   }, []);
@@ -579,6 +739,18 @@ export function useLocalQuest() {
   const baseStats = quest?.stats ?? DEFAULT_STATS;
   const effectiveStatValues = computeEffectiveStats(baseStats, activeEffects);
 
+  const today = new Date();
+  const routines: RoutineWithSteps[] = (quest?.routines ?? []).map((r) => ({
+    ...r,
+    steps: (quest?.steps ?? [])
+      .filter((s) => s.routineId === r.id)
+      .map((s) => ({
+        ...s,
+        completed: quest?.completedToday.includes(s.id) ?? false,
+        dueToday: isStepDueToday(s, today, quest?.lastCompletedAt[s.id]),
+      })),
+  }));
+
   return {
     isLoading: quest === undefined,
     level,
@@ -591,11 +763,7 @@ export function useLocalQuest() {
     baseStats,
     stats: effectiveStatValues,
     unallocatedPoints: quest?.unallocatedPoints ?? 0,
-    defaultQuests: DEFAULT_QUESTS.map((q) => ({ ...q, completed: quest?.completedToday.includes(q.id) ?? false })),
-    customQuests: (quest?.customQuests ?? []).map((q) => ({
-      ...customQuestToDef(q),
-      completed: quest?.completedToday.includes(q.id) ?? false,
-    })),
+    routines,
     titles: quest?.titles ?? [],
     activeTitleId: quest?.activeTitleId ?? null,
     effects: activeEffects,
@@ -610,9 +778,14 @@ export function useLocalQuest() {
     dismissLevelUp,
     syncStreak,
     awardSessionXp,
-    completeQuest,
-    createCustomQuest,
-    deleteCustomQuest,
+    completeStep,
+    createRoutine,
+    renameRoutine,
+    deleteRoutine,
+    createStep,
+    updateStep,
+    deleteStep,
+    createRoutineFromAI,
     allocateStatPoint,
     setActiveTitle,
     triggerEmergencyPenalty,

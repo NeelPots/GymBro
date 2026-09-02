@@ -30,6 +30,35 @@ export interface GenerateProgramOutput {
   exercises: GeneratedProgramExercise[];
 }
 
+export interface GenerateRoutineInput {
+  name: string;
+  prompt: string;
+}
+
+export type GeneratedScheduleKind = "daily" | "weekdays" | "interval";
+
+export interface GeneratedSchedule {
+  kind: GeneratedScheduleKind;
+  /** 0 = Sunday .. 6 = Saturday. Only meaningful when kind === "weekdays". */
+  weekdays?: number[];
+  /** Days since last completion before it's due again. Only meaningful when kind === "interval". */
+  intervalDays?: number;
+}
+
+export type GeneratedStepCategory = "fitness" | "care" | "nutrition" | "work";
+
+export interface GeneratedRoutineStep {
+  name: string;
+  category: GeneratedStepCategory;
+  exp: number;
+  schedule: GeneratedSchedule;
+}
+
+export interface GenerateRoutineOutput {
+  steps: GeneratedRoutineStep[];
+}
+
 export interface AIProvider {
   generateProgram(input: GenerateProgramInput): Promise<GenerateProgramOutput>;
+  generateRoutine(input: GenerateRoutineInput): Promise<GenerateRoutineOutput>;
 }
