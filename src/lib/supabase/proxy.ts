@@ -16,6 +16,14 @@ const AUTH_CHECK_TIMEOUT_MS = 2500;
  * request, that stalled every page load site-wide, not just auth pages.
  * Race it against a timeout so a bad Supabase URL degrades to "no session
  * refreshed this request" instead of freezing the entire app.
+ *
+ * The whole body is wrapped in try/catch too: this runs on every request
+ * for every signed-in visitor, so anything that can throw here (a
+ * malformed/corrupted session cookie, a client construction error, an SDK
+ * bug) previously took the entire request down with it - a broken cookie
+ * for one specific signed-in user could make every page fail to load for
+ * them while working fine for anyone else. Any failure now degrades to
+ * "request proceeds without a session refresh" instead of a hard failure.
  */
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({ request });
@@ -24,28 +32,33 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options),
+            );
+          },
         },
       },
-    },
-  );
+    );
 
-  await Promise.race([
-    supabase.auth.getUser().catch(() => null),
-    new Promise((resolve) => setTimeout(resolve, AUTH_CHECK_TIMEOUT_MS)),
-  ]);
+    await Promise.race([
+      supabase.auth.getUser().catch(() => null),
+      new Promise((resolve) => setTimeout(resolve, AUTH_CHECK_TIMEOUT_MS)),
+    ]);
+  } catch {
+    // Fall through and serve the request without a refreshed session
+    // rather than failing the whole page load.
+  }
 
   return response;
 }

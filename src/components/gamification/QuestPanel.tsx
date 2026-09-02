@@ -31,6 +31,7 @@ export function QuestPanel() {
           key={routine.id}
           routine={routine}
           onComplete={quest.completeStep}
+          onUncomplete={quest.uncompleteStep}
           onEditStep={(step) => setStepEditor({ routineId: routine.id, step })}
           onDeleteStep={quest.deleteStep}
           onAddStep={() => setStepEditor({ routineId: routine.id, step: null })}

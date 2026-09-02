@@ -29,6 +29,7 @@ import {
   STAMINA_COST_PER_FITNESS_QUEST,
 } from "@/lib/gamification/resources";
 import { appendLog, type TerminalLogEntry } from "@/lib/gamification/log";
+import { computeSleepHours, isSleepInsufficient, type SleepEntry } from "@/lib/gamification/sleep";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentUserId, pullQuestState, pushQuestState } from "@/services/gamification/questSync";
 
@@ -110,6 +111,8 @@ interface QuestState {
   routines: Routine[];
   steps: RoutineStep[];
   completedToday: string[];
+  /** Steps that have already granted their XP/coins/buff today - separate from completedToday so unchecking-then-rechecking (fixing a mis-tap) can't be used to farm rewards. */
+  rewardedToday: string[];
   lastCompletedAt: Record<string, string>;
   lastQuestDate: string;
   titles: UnlockedTitle[];
@@ -122,6 +125,7 @@ interface QuestState {
   stamina: number;
   coins: number;
   gems: number;
+  sleepLog: SleepEntry[];
   updatedAt: string;
 }
 
@@ -165,6 +169,7 @@ function defaultState(): QuestState {
     routines,
     steps,
     completedToday: [],
+    rewardedToday: [],
     lastCompletedAt: {},
     lastQuestDate: todayDateString(),
     titles: [],
@@ -177,6 +182,7 @@ function defaultState(): QuestState {
     stamina: maxStamina(1, DEFAULT_STATS),
     coins: 0,
     gems: 0,
+    sleepLog: [],
     updatedAt: new Date(0).toISOString(),
   };
 }
@@ -338,6 +344,7 @@ function tick(state: QuestState, now: number = Date.now()): QuestState {
     next = {
       ...next,
       completedToday: [],
+      rewardedToday: [],
       lastQuestDate: today,
       emergencyPenalty,
       log,
@@ -410,14 +417,21 @@ export function useLocalQuest() {
       if (!cloud || cancelled) return;
       if (new Date(cloud.updatedAt).getTime() <= new Date(local.updatedAt).getTime()) return;
 
-      const cloudState = cloud.state as Record<string, unknown>;
-      const merged = tick(
-        cloudState.routines
-          ? ({ ...defaultState(), ...(cloudState as Partial<QuestState>) } as QuestState)
-          : ({ ...defaultState(), ...cloudState, ...migrateLegacyQuestsToRoutines(cloudState), lastCompletedAt: {} } as QuestState),
-      );
-      const saved = saveQuest(merged);
-      if (!cancelled) setQuest(saved);
+      // A malformed/older-shape cloud payload should never break the app -
+      // worst case, this device just keeps its already-loaded local state
+      // instead of merging in a cloud copy from another device.
+      try {
+        const cloudState = cloud.state as Record<string, unknown>;
+        const merged = tick(
+          Array.isArray(cloudState.routines) && Array.isArray(cloudState.steps)
+            ? ({ ...defaultState(), ...(cloudState as Partial<QuestState>) } as QuestState)
+            : ({ ...defaultState(), ...cloudState, ...migrateLegacyQuestsToRoutines(cloudState), lastCompletedAt: {} } as QuestState),
+        );
+        const saved = saveQuest(merged);
+        if (!cancelled) setQuest(saved);
+      } catch (error) {
+        console.error("Failed to merge cloud quest state, keeping local state:", error);
+      }
     })();
 
     return () => {
@@ -514,6 +528,12 @@ export function useLocalQuest() {
       const step = prev.steps.find((s) => s.id === stepId);
       if (!step) return prev;
 
+      // Already rewarded today (e.g. they unchecked a mis-tap and are
+      // re-checking it) - just flip the checkbox back on, no double XP.
+      if (prev.rewardedToday.includes(stepId)) {
+        return saveQuest({ ...prev, completedToday: [...prev.completedToday, stepId] });
+      }
+
       const now = Date.now();
       const { next: withXp, gained, result: r } = applyXpGain(prev, step.exp, now);
       result = r;
@@ -530,6 +550,7 @@ export function useLocalQuest() {
       const next: QuestState = {
         ...withXp,
         completedToday: [...withXp.completedToday, stepId],
+        rewardedToday: [...withXp.rewardedToday, stepId],
         lastCompletedAt: { ...withXp.lastCompletedAt, [stepId]: new Date(now).toISOString() },
         effects,
         stamina,
@@ -539,6 +560,87 @@ export function useLocalQuest() {
       return saveQuest(next);
     });
     return result;
+  }, []);
+
+  /** Unchecks a step marked complete by accident - doesn't claw back XP/coins (already earned), just flips the checkbox off. */
+  const uncompleteStep = useCallback((stepId: string) => {
+    setQuest((prev) => {
+      if (!prev || !prev.completedToday.includes(stepId)) return prev;
+      const step = prev.steps.find((s) => s.id === stepId);
+      return saveQuest({
+        ...prev,
+        completedToday: prev.completedToday.filter((id) => id !== stepId),
+        log: step ? appendLog(prev.log, `Quest "${step.name}" unmarked.`, "info") : prev.log,
+      });
+    });
+  }, []);
+
+  /**
+   * Logs last night's sleep. Under SLEEP_PENALTY_THRESHOLD_HOURS triggers a
+   * real consequence - an immediate stat/XP debuff plus an Emergency
+   * Penalty Zone lockout (reusing the existing running-focused objectives)
+   * if one isn't already active - not just a logged number. Enough sleep
+   * grants a short "Well Rested" XP buff instead.
+   */
+  const logSleep = useCallback((bedTime: string, wakeTime: string) => {
+    setQuest((prev) => {
+      if (!prev) return prev;
+      const today = todayDateString();
+      if (prev.sleepLog.some((e) => e.date === today)) return prev;
+
+      const hours = computeSleepHours(bedTime, wakeTime);
+      const entry: SleepEntry = { date: today, bedTime, wakeTime, hours };
+      const sleepLog = [...prev.sleepLog, entry].slice(-30);
+      const now = Date.now();
+
+      if (isSleepInsufficient(hours)) {
+        const level = levelFromXp(prev.xp).level;
+        const hpMax = maxHp(level, computeEffectiveStats(prev.stats, prev.effects, now));
+        const hp = clampResource(prev.hp - HP_COST_PER_PENALTY, hpMax);
+        const debuff: StatusEffect = {
+          id: crypto.randomUUID(),
+          label: "Sleep Deprived",
+          kind: "debuff",
+          expiresAt: new Date(now + DEBUFF_DURATION_MS).toISOString(),
+          statDelta: { str: -3, int: -3, vit: -3, dex: -3 },
+          xpMultiplierPct: -15,
+        };
+        const emergencyPenalty: EmergencyPenalty =
+          prev.emergencyPenalty ?? {
+            id: crypto.randomUUID(),
+            assignedAt: new Date(now).toISOString(),
+            deadline: new Date(now + EMERGENCY_WINDOW_MS).toISOString(),
+            objective: EMERGENCY_OBJECTIVES[Math.floor(Math.random() * EMERGENCY_OBJECTIVES.length)],
+            manual: false,
+          };
+        return saveQuest({
+          ...prev,
+          sleepLog,
+          hp,
+          effects: [...prev.effects, debuff],
+          emergencyPenalty,
+          log: appendLog(
+            prev.log,
+            `SLEEP LOG: ${hours}h - insufficient. [Debuff: Sleep Deprived -3 all attributes, -15% EXP]. Penalty Quest assigned.`,
+            "danger",
+          ),
+        });
+      }
+
+      const buff: StatusEffect = {
+        id: crypto.randomUUID(),
+        label: "Well Rested",
+        kind: "buff",
+        expiresAt: new Date(now + 20 * 3_600_000).toISOString(),
+        xpMultiplierPct: 10,
+      };
+      return saveQuest({
+        ...prev,
+        sleepLog,
+        effects: [...prev.effects, buff],
+        log: appendLog(prev.log, `SLEEP LOG: ${hours}h. [Buff: Well Rested +10% EXP].`, "success"),
+      });
+    });
   }, []);
 
   const createRoutine = useCallback((name: string): string => {
@@ -791,10 +893,14 @@ export function useLocalQuest() {
     staminaMax: maxStamina(level, effectiveStatValues),
     coins: quest?.coins ?? 0,
     gems: quest?.gems ?? 0,
+    sleepLog: quest?.sleepLog ?? [],
+    hasLoggedSleepToday: quest?.sleepLog.some((e) => e.date === todayDateString()) ?? false,
     dismissLevelUp,
     syncStreak,
     awardSessionXp,
     completeStep,
+    uncompleteStep,
+    logSleep,
     createRoutine,
     renameRoutine,
     deleteRoutine,

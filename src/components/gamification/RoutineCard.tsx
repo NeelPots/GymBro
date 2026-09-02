@@ -22,6 +22,7 @@ import { RoutineNameDialog } from "./RoutineNameDialog";
 interface RoutineCardProps {
   routine: RoutineWithSteps;
   onComplete: (stepId: string) => void;
+  onUncomplete: (stepId: string) => void;
   onEditStep: (step: StepWithState) => void;
   onDeleteStep: (stepId: string) => void;
   onAddStep: () => void;
@@ -30,8 +31,20 @@ interface RoutineCardProps {
   onToggleCollapsed: () => void;
 }
 
-function StepRow({ step, onComplete, onEdit, onDelete }: { step: StepWithState; onComplete: () => void; onEdit: () => void; onDelete: () => void }) {
-  const active = step.dueToday && !step.completed;
+function StepRow({
+  step,
+  onComplete,
+  onUncomplete,
+  onEdit,
+  onDelete,
+}: {
+  step: StepWithState;
+  onComplete: () => void;
+  onUncomplete: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const clickable = step.completed || step.dueToday;
   return (
     <div
       className={cn(
@@ -41,16 +54,20 @@ function StepRow({ step, onComplete, onEdit, onDelete }: { step: StepWithState; 
     >
       <button
         type="button"
-        disabled={!active}
+        disabled={!clickable}
         onClick={() => {
-          if (!active) return;
-          systemAudio.questComplete();
-          onComplete();
+          if (!clickable) return;
+          if (step.completed) {
+            onUncomplete();
+          } else {
+            systemAudio.questComplete();
+            onComplete();
+          }
         }}
-        aria-label={step.completed ? `${step.name} completed` : `Complete ${step.name}`}
+        aria-label={step.completed ? `Uncheck ${step.name}` : `Complete ${step.name}`}
         className={cn(
           "shrink-0 transition-colors",
-          step.completed ? "text-progress" : active ? "text-subtle hover:text-signal" : "text-subtle/40",
+          step.completed ? "text-progress hover:text-muted-foreground" : clickable ? "text-subtle hover:text-signal" : "text-subtle/40",
         )}
       >
         {step.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
@@ -96,7 +113,7 @@ function StepRow({ step, onComplete, onEdit, onDelete }: { step: StepWithState; 
 }
 
 /** One routine's card: header (collapse/rename/delete) plus its steps, due-today ones actionable. */
-export function RoutineCard({ routine, onComplete, onEditStep, onDeleteStep, onAddStep, onRename, onDelete, onToggleCollapsed }: RoutineCardProps) {
+export function RoutineCard({ routine, onComplete, onUncomplete, onEditStep, onDeleteStep, onAddStep, onRename, onDelete, onToggleCollapsed }: RoutineCardProps) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const collapsed = routine.collapsed ?? false;
@@ -174,6 +191,7 @@ export function RoutineCard({ routine, onComplete, onEditStep, onDeleteStep, onA
                   key={step.id}
                   step={step}
                   onComplete={() => onComplete(step.id)}
+                  onUncomplete={() => onUncomplete(step.id)}
                   onEdit={() => onEditStep(step)}
                   onDelete={() => onDeleteStep(step.id)}
                 />

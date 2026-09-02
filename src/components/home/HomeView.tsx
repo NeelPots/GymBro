@@ -22,6 +22,7 @@ import { LevelCard } from "@/components/gamification/LevelCard";
 import { PenaltyGate } from "@/components/gamification/PenaltyGate";
 import { QuestPanel } from "@/components/gamification/QuestPanel";
 import { StatusWindow } from "@/components/gamification/StatusWindow";
+import { SleepPromptDialog } from "@/components/gamification/SleepPromptDialog";
 import { useQuest } from "@/components/gamification/QuestProvider";
 import { systemAudio } from "@/lib/gamification/audio";
 import type { Exercise } from "@/lib/types/domain";
@@ -39,11 +40,19 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
   const hasLoggedBefore = state !== null && state.sessionLog.length > 0;
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [sleepPromptOpen, setSleepPromptOpen] = useState(false);
 
   useEffect(() => {
     quest.syncStreak(streak, hasLoggedBefore);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streak, hasLoggedBefore]);
+
+  useEffect(() => {
+    if (!quest.isLoading && !quest.hasLoggedSleepToday) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSleepPromptOpen(true);
+    }
+  }, [quest.isLoading, quest.hasLoggedSleepToday]);
 
   if (isLoading || isProgramLoading || isSplitLoading || isSourceLoading || isCustomExercisesLoading || quest.isLoading || !state) {
     return (
@@ -155,6 +164,15 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
       </div>
 
       <StatusWindow open={statusOpen} onOpenChange={setStatusOpen} streak={streak} />
+
+      <SleepPromptDialog
+        open={sleepPromptOpen}
+        onOpenChange={setSleepPromptOpen}
+        onLog={(bedTime, wakeTime) => {
+          quest.logSleep(bedTime, wakeTime);
+          toast("Sleep logged.", { description: "Check the System Feed for the result." });
+        }}
+      />
 
       <LogSetSheet
         key={activeExerciseId ?? "none"}
