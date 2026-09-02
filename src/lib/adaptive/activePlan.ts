@@ -5,6 +5,20 @@ import { resolvePlanExercises } from "./planExercises";
 
 export type PlanSource = "ai" | "split" | "default";
 
+/**
+ * The four foundational movements shown when no AI program or custom split
+ * is active - the library has grown to 300+ exercises (Phase 2/4), but
+ * "today's targets" should stay a short, actionable list, not the whole
+ * catalog.
+ */
+const DEFAULT_PLAN_EXERCISE_IDS = ["push-ups", "pull-ups", "squats", "plank"];
+
+function resolveDefaultPlan(library: Exercise[]): Exercise[] {
+  const byId = new Map(library.map((e) => [e.id, e]));
+  const defaults = DEFAULT_PLAN_EXERCISE_IDS.map((id) => byId.get(id)).filter((e): e is Exercise => e !== undefined);
+  return defaults.length > 0 ? defaults : library.slice(0, 4);
+}
+
 function resolveSplitDayExercises(day: SplitDay, library: Exercise[]): Exercise[] {
   const byId = new Map(library.map((e) => [e.id, e]));
 
@@ -42,5 +56,5 @@ interface ResolveActivePlanArgs {
 export function resolveActivePlan({ source, program, activeDay, library }: ResolveActivePlanArgs): Exercise[] {
   if (source === "ai" && program) return resolvePlanExercises(program, library);
   if (source === "split" && activeDay) return resolveSplitDayExercises(activeDay, library);
-  return library;
+  return resolveDefaultPlan(library);
 }

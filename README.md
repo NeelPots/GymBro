@@ -172,7 +172,7 @@ this is independent of Supabase, since generated programs are stored in
 
 Dark-first, no light theme (yet) — this was a deliberate choice carried over
 from the original prototype's identity, not an oversight.
-
+![alt text](image.png)
 | Token | Value | Used for |
 |---|---|---|
 | `background` | `#0A0B0D` | app background |

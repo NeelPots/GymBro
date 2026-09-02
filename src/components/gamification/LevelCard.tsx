@@ -17,14 +17,14 @@ export function LevelCard({ level, rankTitle, xpIntoLevel, xpForNext, totalSessi
   const hoursPct = hoursTarget && hoursTarget > 0 ? Math.min(100, Math.round((hoursTrained / hoursTarget) * 100)) : 0;
 
   return (
-    <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
+    <div className="hud-panel rounded-[var(--radius)] p-5">
       <div className="flex items-center gap-3">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-signal/10 text-signal ring-1 ring-signal/25">
           <Swords size={20} strokeWidth={2} />
         </div>
         <div className="min-w-0">
-          <div className="font-display text-base font-bold tracking-tight">Level {level}</div>
-          <div className="truncate text-xs text-muted-foreground">{rankTitle}</div>
+          <div className="font-display text-base font-bold tracking-tight hud-glow-text">Level {level}</div>
+          <div className="truncate text-xs text-signal/80">{rankTitle}</div>
         </div>
       </div>
       <div className="mt-4">

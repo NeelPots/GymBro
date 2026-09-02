@@ -6,21 +6,25 @@ import { Activity, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { LevelBadge } from "@/components/gamification/LevelBadge";
-import { useLocalQuest } from "@/hooks/useLocalQuest";
+import { FullscreenToggle } from "@/components/gamification/FullscreenToggle";
+import { useQuest } from "@/components/gamification/QuestProvider";
 import { navItems } from "./navItems";
 
 export function DesktopSidebar() {
   const pathname = usePathname();
-  const { level, rankTitle, isLoading: isQuestLoading } = useLocalQuest();
+  const { level, rankTitle, isLoading: isQuestLoading } = useQuest();
 
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-border bg-surface px-4 py-6 lg:flex">
-      <Link href="/home" className="mb-8 flex items-center gap-2.5 px-2">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-signal/10 text-signal ring-1 ring-signal/30">
-          <Activity size={16} strokeWidth={2.25} />
-        </div>
-        <span className="font-display text-[15px] font-bold tracking-tight">GymBro</span>
-      </Link>
+      <div className="mb-8 flex items-center justify-between px-2">
+        <Link href="/home" className="flex items-center gap-2.5">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-signal/10 text-signal ring-1 ring-signal/30">
+            <Activity size={16} strokeWidth={2.25} />
+          </div>
+          <span className="font-display text-[15px] font-bold tracking-tight">GymBro</span>
+        </Link>
+        <FullscreenToggle />
+      </div>
 
       <nav className="flex flex-1 flex-col gap-1">
         {navItems.map(({ href, label, icon: Icon }) => {

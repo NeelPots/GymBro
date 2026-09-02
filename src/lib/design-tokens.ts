@@ -4,16 +4,17 @@
  * custom properties in src/app/globals.css.
  */
 export const tokens = {
-  background: "#0A0B0D",
-  surface: "#15171A",
-  surface2: "#1E2124",
-  border: "#26292E",
-  textPrimary: "#F5F5F0",
-  textSecondary: "#9A9DA3",
-  textTertiary: "#5C6066",
-  signal: "#FF4D2E",
-  progress: "#3ECF8E",
+  background: "#030712",
+  surface: "#0A1120",
+  surface2: "#101A30",
+  border: "#17233A",
+  textPrimary: "#EAF6FF",
+  textSecondary: "#8FA8C9",
+  textTertiary: "#5C7291",
+  signal: "#00F3FF",
+  progress: "#39FF8A",
   deload: "#FFB020",
+  penalty: "#FF0055",
   fontDisplay: "var(--font-display)",
   fontBody: "var(--font-body)",
   fontMono: "var(--font-mono)",
@@ -23,5 +24,5 @@ export const movementChartColors = [
   tokens.signal,
   tokens.progress,
   tokens.deload,
-  "#7DA6FF",
+  "#7C5CFF",
 ] as const;

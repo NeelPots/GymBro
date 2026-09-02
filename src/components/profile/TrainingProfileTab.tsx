@@ -1,16 +1,23 @@
 "use client";
 
+import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SignalPanel } from "@/components/signal/SignalPanel";
 import { CircularProgress } from "@/components/shared/CircularProgress";
 import { LevelCard } from "@/components/gamification/LevelCard";
+import { useQuest } from "@/components/gamification/QuestProvider";
 import { useLocalAdaptiveState } from "@/hooks/useLocalAdaptiveState";
-import { useLocalQuest } from "@/hooks/useLocalQuest";
 import type { Exercise } from "@/lib/types/domain";
 
 export function TrainingProfileTab({ exercises }: { exercises: Exercise[] }) {
   const { state, isLoading, streak, weekCompletion } = useLocalAdaptiveState(exercises);
-  const quest = useLocalQuest(streak, state !== null && state.sessionLog.length > 0);
+  const quest = useQuest();
+  const hasLoggedBefore = state !== null && state.sessionLog.length > 0;
+
+  useEffect(() => {
+    quest.syncStreak(streak, hasLoggedBefore);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [streak, hasLoggedBefore]);
 
   if (isLoading || quest.isLoading || !state) {
     return (

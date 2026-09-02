@@ -33,7 +33,12 @@ export function levelFromXp(totalXp: number): LevelInfo {
   return { level, xpIntoLevel: remaining, xpForNext: xpRequiredForLevel(level) };
 }
 
-const RANK_THRESHOLDS: { minLevel: number; title: string }[] = [
+export interface RankTier {
+  minLevel: number;
+  title: string;
+}
+
+export const RANK_THRESHOLDS: RankTier[] = [
   { minLevel: 30, title: "S-Rank Hunter" },
   { minLevel: 20, title: "A-Rank Hunter" },
   { minLevel: 15, title: "B-Rank Hunter" },

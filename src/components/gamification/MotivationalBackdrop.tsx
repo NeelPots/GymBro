@@ -169,10 +169,10 @@ export function MotivationalBackdrop() {
         >
           <div
             className={
-              "py-2 text-center font-display text-base font-bold tracking-wide uppercase sm:py-3 sm:text-2xl lg:py-4 lg:text-5xl " +
+              "py-2 text-center font-display text-base font-bold tracking-wide uppercase sm:py-3 sm:text-2xl lg:py-3 lg:text-3xl " +
               (band.tone === "signal"
-                ? "bg-gradient-to-r from-transparent via-signal/10 to-transparent text-signal/40 sm:via-signal/15 sm:text-signal/60 lg:via-signal/20 lg:text-signal/80"
-                : "bg-gradient-to-r from-transparent via-progress/10 to-transparent text-progress/35 sm:via-progress/15 sm:text-progress/55 lg:via-progress/20 lg:text-progress/75")
+                ? "bg-gradient-to-r from-transparent via-signal/10 to-transparent text-signal/40 sm:via-signal/15 sm:text-signal/60 lg:via-signal/10 lg:text-signal/25"
+                : "bg-gradient-to-r from-transparent via-progress/10 to-transparent text-progress/35 sm:via-progress/15 sm:text-progress/55 lg:via-progress/10 lg:text-progress/20")
             }
           >
             {quotes[i]}
