@@ -101,7 +101,7 @@ export interface GeneratedStepInput {
   schedule: Schedule;
 }
 
-interface QuestState {
+export interface QuestState {
   xp: number;
   lastStreakSeen: number;
   pendingPenalty: PendingPenalty | null;
@@ -214,6 +214,81 @@ function migrateLegacyQuestsToRoutines(parsed: Record<string, unknown>): { routi
   }
 
   return { routines, steps };
+}
+
+function unionById<T extends { id: string }>(a: T[], b: T[]): T[] {
+  const byId = new Map<string, T>();
+  for (const item of a) byId.set(item.id, item);
+  for (const item of b) if (!byId.has(item.id)) byId.set(item.id, item);
+  return [...byId.values()];
+}
+
+function unionStrings(a: string[], b: string[]): string[] {
+  return [...new Set([...a, ...b])];
+}
+
+/**
+ * Merges two QuestStates (typically this device's local state and whatever
+ * came back from the cloud) so that nothing either side already has is
+ * ever lost - routines/steps/titles/etc. are unioned by id instead of
+ * picking one whole side wholesale, and numeric progress takes the max of
+ * both. This matters because plain last-write-wins-by-timestamp silently
+ * discards an entire device's unique data whenever the OTHER device's
+ * `updatedAt` happens to be newer - which the 30s background tick makes
+ * easy to hit even with no real user action on that device - e.g. a
+ * routine created on your phone would just vanish once your desktop's
+ * local copy got re-saved more recently. Order mostly doesn't matter
+ * (union/max are symmetric); where it does (a handful of "prefer one
+ * exclusive value" fields), `a` wins ties.
+ */
+export function mergeQuestStates(a: QuestState, b: QuestState): QuestState {
+  const lastCompletedAt: Record<string, string> = { ...a.lastCompletedAt };
+  for (const [stepId, iso] of Object.entries(b.lastCompletedAt)) {
+    const existing = lastCompletedAt[stepId];
+    if (!existing || new Date(iso).getTime() > new Date(existing).getTime()) {
+      lastCompletedAt[stepId] = iso;
+    }
+  }
+
+  const sleepByDate = new Map<string, SleepEntry>();
+  for (const entry of [...a.sleepLog, ...b.sleepLog]) sleepByDate.set(entry.date, entry);
+
+  const mergedLog = [...a.log, ...b.log]
+    .filter((entry, i, arr) => arr.findIndex((e) => e.id === entry.id) === i)
+    .sort((x, y) => new Date(x.timestamp).getTime() - new Date(y.timestamp).getTime())
+    .slice(-100);
+
+  return {
+    xp: Math.max(a.xp, b.xp),
+    lastStreakSeen: Math.max(a.lastStreakSeen, b.lastStreakSeen),
+    pendingPenalty: a.pendingPenalty ?? b.pendingPenalty,
+    penaltyLog: unionById(a.penaltyLog, b.penaltyLog),
+    stats: {
+      str: Math.max(a.stats.str, b.stats.str),
+      int: Math.max(a.stats.int, b.stats.int),
+      vit: Math.max(a.stats.vit, b.stats.vit),
+      dex: Math.max(a.stats.dex, b.stats.dex),
+    },
+    unallocatedPoints: Math.max(a.unallocatedPoints, b.unallocatedPoints),
+    routines: unionById(a.routines, b.routines),
+    steps: unionById(a.steps, b.steps),
+    completedToday: unionStrings(a.completedToday, b.completedToday),
+    rewardedToday: unionStrings(a.rewardedToday, b.rewardedToday),
+    lastCompletedAt,
+    lastQuestDate: a.lastQuestDate > b.lastQuestDate ? a.lastQuestDate : b.lastQuestDate,
+    titles: unionById(a.titles, b.titles),
+    activeTitleId: a.activeTitleId ?? b.activeTitleId,
+    effects: unionById(a.effects, b.effects),
+    emergencyPenalty: a.emergencyPenalty ?? b.emergencyPenalty,
+    log: mergedLog,
+    lastLevelUp: a.lastLevelUp ?? b.lastLevelUp,
+    hp: Math.min(a.hp, b.hp),
+    stamina: Math.min(a.stamina, b.stamina),
+    coins: Math.max(a.coins, b.coins),
+    gems: Math.max(a.gems, b.gems),
+    sleepLog: [...sleepByDate.values()],
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 function loadQuest(): QuestState {
@@ -415,18 +490,21 @@ export function useLocalQuest() {
 
       const cloud = await pullQuestState(userId);
       if (!cloud || cancelled) return;
-      if (new Date(cloud.updatedAt).getTime() <= new Date(local.updatedAt).getTime()) return;
 
-      // A malformed/older-shape cloud payload should never break the app -
-      // worst case, this device just keeps its already-loaded local state
-      // instead of merging in a cloud copy from another device.
+      // Always union-merge rather than picking whichever side has the
+      // newer `updatedAt` wholesale - the periodic 30s tick re-stamps
+      // updatedAt on its own, so "newer" doesn't reliably mean "has the
+      // routine you just created on your other device." A malformed/
+      // older-shape cloud payload should never break the app either -
+      // worst case, this device just keeps its already-loaded local state.
       try {
         const cloudState = cloud.state as Record<string, unknown>;
-        const merged = tick(
+        const normalizedCloud = (
           Array.isArray(cloudState.routines) && Array.isArray(cloudState.steps)
-            ? ({ ...defaultState(), ...(cloudState as Partial<QuestState>) } as QuestState)
-            : ({ ...defaultState(), ...cloudState, ...migrateLegacyQuestsToRoutines(cloudState), lastCompletedAt: {} } as QuestState),
-        );
+            ? { ...defaultState(), ...(cloudState as Partial<QuestState>) }
+            : { ...defaultState(), ...cloudState, ...migrateLegacyQuestsToRoutines(cloudState), lastCompletedAt: {} }
+        ) as QuestState;
+        const merged = tick(mergeQuestStates(local, normalizedCloud));
         const saved = saveQuest(merged);
         if (!cancelled) setQuest(saved);
       } catch (error) {

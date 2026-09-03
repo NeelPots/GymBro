@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getCurrentUserId } from "@/services/gamification/questSync";
+import { pullSplits, pushSplits } from "@/services/training/trainingSync";
 
 const STORAGE_KEY = "adaptive-coach-split-v1";
+const CLOUD_PUSH_DEBOUNCE_MS = 1_500;
 
 export interface SplitExercise {
   exerciseId: string;
@@ -39,21 +43,67 @@ function saveSplit(state: LocalSplitState) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+/** Union by id so a day created on one device is never discarded by a sync from another. */
+function mergeDays(a: SplitDay[], b: SplitDay[]): SplitDay[] {
+  const byId = new Map<string, SplitDay>();
+  for (const day of a) byId.set(day.id, day);
+  for (const day of b) if (!byId.has(day.id)) byId.set(day.id, day);
+  return [...byId.values()];
+}
+
 /**
- * User-authored workout splits (e.g. "Push Day", "Pull Day") - stored in
- * localStorage alongside useLocalProgram, same dual-mode pattern as the rest
- * of the app. Activating a day only updates activeDayId here; whether a
- * split or an AI program actually drives Home is decided by the separate
- * planSource pointer (see useActivePlanSource) so both can be saved at once
- * without one silently overriding the other.
+ * User-authored workout splits (e.g. "Push Day", "Pull Day") - local-first
+ * in localStorage, and (when signed in) mirrored to the `training_state`
+ * table so a day built on one device shows up on another. Only the day
+ * *content* syncs, unioned by id like routines/steps - which day is
+ * currently active stays a per-device choice (not synced), since which
+ * plan drives Home is separately decided by useActivePlanSource and
+ * legitimately can differ device to device.
  */
 export function useLocalSplit() {
   const [split, setSplit] = useState<LocalSplitState | undefined>(undefined);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSplit(loadSplit());
+    let cancelled = false;
+
+    void (async () => {
+      const local = loadSplit();
+      if (cancelled) return;
+      setSplit(local);
+
+      if (!isSupabaseConfigured) return;
+      const userId = await getCurrentUserId();
+      if (!userId || cancelled) return;
+
+      const cloud = await pullSplits(userId);
+      if (!cloud || cancelled) return;
+
+      try {
+        const cloudDays = cloud.splits as SplitDay[];
+        const merged: LocalSplitState = { days: mergeDays(local.days, cloudDays), activeDayId: local.activeDayId };
+        saveSplit(merged);
+        if (!cancelled) setSplit(merged);
+      } catch (error) {
+        console.error("Failed to merge cloud split state, keeping local state:", error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    if (split === undefined || !isSupabaseConfigured) return;
+    const id = setTimeout(() => {
+      void (async () => {
+        const userId = await getCurrentUserId();
+        if (!userId) return;
+        await pushSplits(userId, split.days, new Date().toISOString());
+      })();
+    }, CLOUD_PUSH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [split]);
 
   const createDay = useCallback((name: string, exercises: SplitExercise[]) => {
     setSplit((prev) => {

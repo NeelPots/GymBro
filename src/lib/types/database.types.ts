@@ -275,6 +275,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      training_state: {
+        Row: {
+          user_id: string;
+          splits: unknown[] | null;
+          splits_updated_at: string | null;
+          program: Record<string, unknown> | null;
+          program_updated_at: string | null;
+          custom_exercises: unknown[] | null;
+          custom_exercises_updated_at: string | null;
+        };
+        Insert: {
+          user_id: string;
+          splits?: unknown[] | null;
+          splits_updated_at?: string | null;
+          program?: Record<string, unknown> | null;
+          program_updated_at?: string | null;
+          custom_exercises?: unknown[] | null;
+          custom_exercises_updated_at?: string | null;
+        };
+        Update: {
+          user_id?: string;
+          splits?: unknown[] | null;
+          splits_updated_at?: string | null;
+          program?: Record<string, unknown> | null;
+          program_updated_at?: string | null;
+          custom_exercises?: unknown[] | null;
+          custom_exercises_updated_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
