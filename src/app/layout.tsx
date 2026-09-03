@@ -25,14 +25,31 @@ const fontMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "GymBro",
   description:
-    "A calisthenics training plan that adjusts to how you're actually performing.",
+    "A leveling-up System for training, looks, and daily discipline - quests, routines, and ranks that adjust to how you're actually performing.",
   manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: "/icon-192.png",
+    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
+  // Standalone (no Safari chrome) when launched from the iOS home screen -
+  // Safari doesn't read the web manifest's `display` field, only these tags.
+  // Next's typed `appleWebApp.capable` doesn't actually emit the
+  // apple-mobile-web-app-capable tag despite the option name, so it's set
+  // explicitly below via `other` alongside the modern cross-browser
+  // equivalent (mobile-web-app-capable, used by Chrome/Android too).
+  appleWebApp: {
+    statusBarStyle: "black-translucent",
+    title: "GymBro",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+  },
+  formatDetection: {
+    telephone: false,
   },
 };
 

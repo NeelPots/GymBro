@@ -3,7 +3,7 @@
 // would go stale. This gives installability + a basic offline fallback for
 // pages already visited; revisit for a fuller offline strategy in a later
 // phase if needed.
-const CACHE_NAME = "adaptive-coach-v2";
+const CACHE_NAME = "adaptive-coach-v3";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

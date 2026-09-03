@@ -8,6 +8,7 @@ import { SystemTerminal } from "@/components/gamification/SystemTerminal";
 import { PenaltyOverlay } from "@/components/gamification/PenaltyOverlay";
 import { LevelUpModal } from "@/components/gamification/LevelUpModal";
 import { QuestProvider } from "@/components/gamification/QuestProvider";
+import { InstallBanner } from "@/components/shared/InstallBanner";
 
 export default function AppShellLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -20,6 +21,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
           <div className="mx-auto w-full max-w-xl lg:max-w-4xl">
             <AppHeader />
             <main className="px-5 sm:px-0 lg:px-8">
+              <InstallBanner />
               <PageTransition>{children}</PageTransition>
             </main>
           </div>
