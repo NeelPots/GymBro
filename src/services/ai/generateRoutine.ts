@@ -30,6 +30,12 @@ function sanitizeStep(step: GeneratedRoutineStep): GeneratedRoutineStep | null {
     return { ...step, name: step.name.trim(), exp, schedule: { kind: "interval", intervalDays } };
   }
 
+  if (step.schedule.kind === "cycle") {
+    const onDays = Math.max(1, Math.min(14, Math.round(step.schedule.onDays ?? 1)));
+    const offDays = Math.max(0, Math.min(14, Math.round(step.schedule.offDays ?? 0)));
+    return { ...step, name: step.name.trim(), exp, schedule: { kind: "cycle", onDays, offDays } };
+  }
+
   return { ...step, name: step.name.trim(), exp, schedule: { kind: "daily" } };
 }
 

@@ -111,7 +111,7 @@ Break this down into individual scheduled steps.`;
       model: MODEL,
       max_tokens: 2048,
       system:
-        "You are the routine-building component of a general self-improvement/leveling-up app - it covers fitness, skin/grooming, nutrition, and focused work, not just workouts. Given a routine name and a free-text description, break it into a short list of concrete, individually-completable steps (typically 3-8). Each step needs: a short imperative name (e.g. \"Apply moisturizer\", \"Shampoo hair\", \"30 min deep work\"), a category (fitness/care/nutrition/work - pick whichever fits best, care covers skin/grooming/hygiene), an EXP value between 20 and 150 scaled to effort/time required, and a schedule. Use schedule kind \"daily\" for things that should happen every day, \"weekdays\" with specific weekday numbers (0=Sunday..6=Saturday) for things tied to certain days, or \"interval\" with intervalDays for things that recur every N days regardless of which weekday (e.g. \"wash hair every 3 days\"). Infer a sensible schedule from the description; default to daily if nothing suggests otherwise.",
+        "You are the routine-building component of a general self-improvement/leveling-up app - it covers fitness, skin/grooming, nutrition, and focused work, not just workouts. Given a routine name and a free-text description, break it into a short list of concrete, individually-completable steps (typically 3-8). Each step needs: a short imperative name (e.g. \"Apply moisturizer\", \"Shampoo hair\", \"30 min deep work\"), a category (fitness/care/nutrition/work - pick whichever fits best, care covers skin/grooming/hygiene), an EXP value between 20 and 150 scaled to effort/time required, and a schedule. Use schedule kind \"daily\" for things that should happen every day, \"weekdays\" with specific weekday numbers (0=Sunday..6=Saturday) for things tied to certain calendar days, \"interval\" with intervalDays for things that recur every N days after they're LAST DONE regardless of weekday (e.g. \"wash hair every 3 days\" - reschedules around whenever they actually did it), or \"cycle\" with onDays/offDays for a FIXED repeating rotation that does not reschedule around completion (e.g. \"gym 3 days on, 1 day off\", \"train 4 days then rest 2\" - use this whenever the user describes a repeating on/off pattern rather than a reminder). Infer a sensible schedule from the description; default to daily if nothing suggests otherwise.",
       tools: [
         {
           name: "generate_routine",
@@ -131,13 +131,15 @@ Break this down into individual scheduled steps.`;
                     schedule: {
                       type: "object",
                       properties: {
-                        kind: { type: "string", enum: ["daily", "weekdays", "interval"] },
+                        kind: { type: "string", enum: ["daily", "weekdays", "interval", "cycle"] },
                         weekdays: {
                           type: "array",
                           items: { type: "integer", description: "0=Sunday..6=Saturday." },
                           description: "Only when kind is weekdays - each entry 0=Sunday..6=Saturday.",
                         },
-                        intervalDays: { type: "integer", description: "Only when kind is interval - days between occurrences." },
+                        intervalDays: { type: "integer", description: "Only when kind is interval - days since last completion before due again." },
+                        onDays: { type: "integer", description: "Only when kind is cycle - consecutive 'on' days per rotation." },
+                        offDays: { type: "integer", description: "Only when kind is cycle - consecutive rest days per rotation." },
                       },
                       required: ["kind"],
                       additionalProperties: false,

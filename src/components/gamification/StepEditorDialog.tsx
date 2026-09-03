@@ -41,9 +41,10 @@ const SCHEDULE_KINDS: { value: ScheduleKind; label: string }[] = [
   { value: "daily", label: "Daily" },
   { value: "weekdays", label: "Specific days" },
   { value: "interval", label: "Every N days" },
+  { value: "cycle", label: "On/off rotation" },
 ];
 
-/** Add/edit a routine step: name, category, EXP, and a schedule (daily / specific weekdays / every N days). */
+/** Add/edit a routine step: name, category, EXP, and a schedule (daily / specific weekdays / every N days / an on-off rotation). */
 export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEditorDialogProps) {
   const isEditing = step != null;
   const [name, setName] = useState("");
@@ -52,6 +53,8 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
   const [scheduleKind, setScheduleKind] = useState<ScheduleKind>("daily");
   const [weekdays, setWeekdays] = useState<number[]>([1, 3, 5]);
   const [intervalDays, setIntervalDays] = useState(3);
+  const [onDays, setOnDays] = useState(3);
+  const [offDays, setOffDays] = useState(1);
 
   useEffect(() => {
     if (!open) return;
@@ -63,6 +66,8 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
       setScheduleKind(step.schedule.kind);
       setWeekdays(step.schedule.weekdays ?? [1, 3, 5]);
       setIntervalDays(step.schedule.intervalDays ?? 3);
+      setOnDays(step.schedule.onDays ?? 3);
+      setOffDays(step.schedule.offDays ?? 1);
     } else {
       setName("");
       setExp(50);
@@ -70,6 +75,8 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
       setScheduleKind("daily");
       setWeekdays([1, 3, 5]);
       setIntervalDays(3);
+      setOnDays(3);
+      setOffDays(1);
     }
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [open, step]);
@@ -81,6 +88,9 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
   function buildSchedule(): Schedule {
     if (scheduleKind === "weekdays") return { kind: "weekdays", weekdays };
     if (scheduleKind === "interval") return { kind: "interval", intervalDays: Math.max(2, Math.min(14, intervalDays)) };
+    if (scheduleKind === "cycle") {
+      return { kind: "cycle", onDays: Math.max(1, Math.min(14, onDays)), offDays: Math.max(0, Math.min(14, offDays)) };
+    }
     return { kind: "daily" };
   }
 
@@ -148,7 +158,7 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
 
           <div>
             <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">Schedule</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {SCHEDULE_KINDS.map((s) => (
                 <button
                   key={s.value}
@@ -189,6 +199,28 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
                   <NumberStepper value={intervalDays} onChange={(v) => setIntervalDays(Math.max(2, Math.min(14, v)))} min={2} />
                 </div>
                 <span className="font-mono text-xs text-muted-foreground">days</span>
+              </div>
+            )}
+
+            {scheduleKind === "cycle" && (
+              <div className="mt-2.5 flex flex-col gap-2.5">
+                <p className="text-[11px] text-muted-foreground">
+                  A fixed rotation from today, e.g. gym 3 days on, 1 day off - repeats regardless of weekday.
+                </p>
+                <div className="flex items-center gap-3">
+                  <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">On</span>
+                  <div className="w-28">
+                    <NumberStepper value={onDays} onChange={(v) => setOnDays(Math.max(1, Math.min(14, v)))} min={1} />
+                  </div>
+                  <span className="font-mono text-xs text-muted-foreground">days</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">Off</span>
+                  <div className="w-28">
+                    <NumberStepper value={offDays} onChange={(v) => setOffDays(Math.max(0, Math.min(14, v)))} min={0} />
+                  </div>
+                  <span className="font-mono text-xs text-muted-foreground">days</span>
+                </div>
               </div>
             )}
           </div>

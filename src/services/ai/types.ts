@@ -35,7 +35,7 @@ export interface GenerateRoutineInput {
   prompt: string;
 }
 
-export type GeneratedScheduleKind = "daily" | "weekdays" | "interval";
+export type GeneratedScheduleKind = "daily" | "weekdays" | "interval" | "cycle";
 
 export interface GeneratedSchedule {
   kind: GeneratedScheduleKind;
@@ -43,6 +43,10 @@ export interface GeneratedSchedule {
   weekdays?: number[];
   /** Days since last completion before it's due again. Only meaningful when kind === "interval". */
   intervalDays?: number;
+  /** Consecutive "on" days per rotation. Only meaningful when kind === "cycle". */
+  onDays?: number;
+  /** Consecutive "off"/rest days per rotation. Only meaningful when kind === "cycle". */
+  offDays?: number;
 }
 
 export type GeneratedStepCategory = "fitness" | "care" | "nutrition" | "work";
