@@ -21,7 +21,7 @@ export function DesktopSidebar() {
           <div className="flex size-8 items-center justify-center rounded-lg bg-signal/10 text-signal ring-1 ring-signal/30">
             <Activity size={16} strokeWidth={2.25} />
           </div>
-          <span className="font-display text-[15px] font-bold tracking-tight">Lock In</span>
+          <span className="font-display text-[15px] font-bold tracking-tight">Lock Inn</span>
         </Link>
         <FullscreenToggle />
       </div>

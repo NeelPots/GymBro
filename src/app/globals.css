@@ -47,7 +47,7 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  /* Lock In signature tokens - carried forward from the original design */
+  /* Lock Inn signature tokens - carried forward from the original design */
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-signal: var(--signal);
