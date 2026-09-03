@@ -32,3 +32,35 @@ export function computeSleepHours(bedTime: string, wakeTime: string): number {
 export function isSleepInsufficient(hours: number): boolean {
   return hours < SLEEP_PENALTY_THRESHOLD_HOURS;
 }
+
+/**
+ * Converts last night's sleep into a 0-100 "energy" reading for today's
+ * capacity - the halfway point is pinned to SLEEP_PENALTY_THRESHOLD_HOURS so
+ * the number lines up with the same threshold that triggers the penalty
+ * (below it climbs steeply from 0, at-or-above it climbs the rest of the way
+ * to a full 100% by 3 hours past the threshold; more sleep past that doesn't
+ * add anything - there's no bonus for oversleeping).
+ */
+export function energyPercentFromSleepHours(hours: number): number {
+  const h = Math.max(0, hours);
+  if (h <= SLEEP_PENALTY_THRESHOLD_HOURS) {
+    return Math.round((h / SLEEP_PENALTY_THRESHOLD_HOURS) * 50);
+  }
+  const bonusWindowHours = 3;
+  const bonus = Math.min(h - SLEEP_PENALTY_THRESHOLD_HOURS, bonusWindowHours);
+  return Math.round(50 + (bonus / bonusWindowHours) * 50);
+}
+
+export function energyLabel(pct: number): string {
+  if (pct >= 100) return "Fully Charged";
+  if (pct >= 67) return "Steady";
+  if (pct >= 34) return "Running Low";
+  return "Depleted";
+}
+
+export function energyColor(pct: number): string {
+  if (pct >= 100) return "#33ff88";
+  if (pct >= 67) return "#33aaff";
+  if (pct >= 34) return "#ffbb33";
+  return "#ff0055";
+}

@@ -21,6 +21,7 @@ import { useActivePlanSource } from "@/hooks/useActivePlanSource";
 import { resolveActivePlan } from "@/lib/adaptive/activePlan";
 import { evaluateMovement, type SessionEntry } from "@/lib/adaptive/engine";
 import { LevelCard } from "@/components/gamification/LevelCard";
+import { EnergyMeter } from "@/components/gamification/EnergyMeter";
 import { PenaltyGate } from "@/components/gamification/PenaltyGate";
 import { QuestPanel } from "@/components/gamification/QuestPanel";
 import { StatusWindow } from "@/components/gamification/StatusWindow";
@@ -51,10 +52,13 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
   }, [streak, hasLoggedBefore]);
 
   useEffect(() => {
-    if (!quest.isLoading && !quest.hasLoggedSleepToday) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSleepPromptOpen(true);
-    }
+    if (quest.isLoading) return;
+    // A pure reflection of hasLoggedSleepToday (not just "turn on") so that if
+    // a background cloud re-sync later confirms sleep was already logged on
+    // another device, the prompt closes itself instead of staying stuck open
+    // from a stale pre-sync read.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSleepPromptOpen(!quest.hasLoggedSleepToday);
   }, [quest.isLoading, quest.hasLoggedSleepToday]);
 
   if (isLoading || isProgramLoading || isSplitLoading || isSourceLoading || isCustomExercisesLoading || quest.isLoading || !state) {
@@ -76,6 +80,8 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
   return (
     <div className="pt-2 lg:grid lg:grid-cols-[1fr_280px] lg:items-start lg:gap-6">
       <div className="flex flex-col gap-4">
+        <EnergyMeter latestSleepEntry={quest.latestSleepEntry} hasLoggedSleepToday={quest.hasLoggedSleepToday} />
+
         <div className="flex items-center justify-between lg:hidden">
           <span className="font-mono text-[13px] text-signal">{streak} day streak</span>
           <button

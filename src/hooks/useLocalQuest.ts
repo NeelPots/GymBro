@@ -40,7 +40,9 @@ const MIGRATED_CUSTOM_ROUTINE_ID = "custom";
 
 const EMERGENCY_WINDOW_MS = 3 * 60 * 60 * 1000;
 const DEBUFF_DURATION_MS = 24 * 60 * 60 * 1000;
-const CLOUD_PUSH_DEBOUNCE_MS = 1_500;
+const CLOUD_PUSH_DEBOUNCE_MS = 800;
+/** Caps how long the initial load waits on a cloud pull before falling back to local state, so a slow/offline network can't hang the app. */
+const CLOUD_PULL_TIMEOUT_MS = 6_000;
 const COINS_PER_QUEST = 10;
 const GEMS_PER_LEVEL_UP = 1;
 const GEMS_PER_TITLE_UNLOCK = 3;
@@ -291,6 +293,15 @@ export function mergeQuestStates(a: QuestState, b: QuestState): QuestState {
   };
 }
 
+/** Normalizes a raw cloud row's `state` payload into a `QuestState`, migrating the pre-routines shape if needed. */
+function normalizeCloudState(cloudState: Record<string, unknown>): QuestState {
+  return (
+    Array.isArray(cloudState.routines) && Array.isArray(cloudState.steps)
+      ? { ...defaultState(), ...(cloudState as Partial<QuestState>) }
+      : { ...defaultState(), ...cloudState, ...migrateLegacyQuestsToRoutines(cloudState), lastCompletedAt: {} }
+  ) as QuestState;
+}
+
 function loadQuest(): QuestState {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (raw) {
@@ -482,14 +493,37 @@ export function useLocalQuest() {
     void (async () => {
       const local = tick(loadQuest());
       if (cancelled) return;
-      setQuest(local);
 
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) {
+        setQuest(local);
+        return;
+      }
       const userId = await getCurrentUserId();
-      if (!userId || cancelled) return;
+      if (cancelled) return;
+      if (!userId) {
+        setQuest(local);
+        return;
+      }
 
-      const cloud = await pullQuestState(userId);
-      if (!cloud || cancelled) return;
+      // Wait for the cloud pull (bounded by a timeout so a slow/offline
+      // network never hangs the app) before showing ANYTHING derived from
+      // "loaded" state - completed-quest checkboxes, penalties, and
+      // especially the once-a-day sleep prompt. Showing local state as
+      // final ahead of reconciling with the cloud is exactly what let the
+      // sleep check-in re-fire on a second/third device even after it was
+      // already logged on the first: isLoading flipped false the instant
+      // local storage was read, so `hasLoggedSleepToday` was judged against
+      // a stale, pre-sync snapshot every single time.
+      const cloud = await Promise.race([
+        pullQuestState(userId),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), CLOUD_PULL_TIMEOUT_MS)),
+      ]);
+      if (cancelled) return;
+
+      if (!cloud) {
+        setQuest(local);
+        return;
+      }
 
       // Always union-merge rather than picking whichever side has the
       // newer `updatedAt` wholesale - the periodic 30s tick re-stamps
@@ -498,22 +532,52 @@ export function useLocalQuest() {
       // older-shape cloud payload should never break the app either -
       // worst case, this device just keeps its already-loaded local state.
       try {
-        const cloudState = cloud.state as Record<string, unknown>;
-        const normalizedCloud = (
-          Array.isArray(cloudState.routines) && Array.isArray(cloudState.steps)
-            ? { ...defaultState(), ...(cloudState as Partial<QuestState>) }
-            : { ...defaultState(), ...cloudState, ...migrateLegacyQuestsToRoutines(cloudState), lastCompletedAt: {} }
-        ) as QuestState;
-        const merged = tick(mergeQuestStates(local, normalizedCloud));
+        const merged = tick(mergeQuestStates(local, normalizeCloudState(cloud.state as Record<string, unknown>)));
         const saved = saveQuest(merged);
         if (!cancelled) setQuest(saved);
       } catch (error) {
         console.error("Failed to merge cloud quest state, keeping local state:", error);
+        if (!cancelled) setQuest(local);
       }
     })();
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  // Re-sync from the cloud whenever the tab/app regains focus, so a device
+  // that's been sitting open in the background (or was just switched back
+  // to) picks up what happened on other devices without needing a reload -
+  // completing this app's "everything follows you across devices" promise
+  // beyond just the initial mount.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    async function resync() {
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+      const cloud = await pullQuestState(userId);
+      if (!cloud) return;
+      setQuest((prev) => {
+        if (!prev) return prev;
+        try {
+          return saveQuest(tick(mergeQuestStates(prev, normalizeCloudState(cloud.state as Record<string, unknown>))));
+        } catch (error) {
+          console.error("Failed to merge cloud quest state on refocus, keeping current state:", error);
+          return prev;
+        }
+      });
+    }
+
+    function onVisible() {
+      if (document.visibilityState === "visible") void resync();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, []);
 
@@ -973,6 +1037,10 @@ export function useLocalQuest() {
     gems: quest?.gems ?? 0,
     sleepLog: quest?.sleepLog ?? [],
     hasLoggedSleepToday: quest?.sleepLog.some((e) => e.date === todayDateString()) ?? false,
+    // The most recent entry regardless of date, so the energy readout still shows
+    // last night's number for a moment even before today's check-in is logged.
+    latestSleepEntry:
+      quest?.sleepLog.length ? quest.sleepLog.reduce((latest, e) => (e.date > latest.date ? e : latest)) : null,
     dismissLevelUp,
     syncStreak,
     awardSessionXp,
