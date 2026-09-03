@@ -6,7 +6,9 @@ import { getCurrentUserId } from "@/services/gamification/questSync";
 import { pullSplits, pushSplits } from "@/services/training/trainingSync";
 
 const STORAGE_KEY = "adaptive-coach-split-v1";
-const CLOUD_PUSH_DEBOUNCE_MS = 1_500;
+const CLOUD_PUSH_DEBOUNCE_MS = 800;
+/** Caps how long the initial load waits on a cloud pull before falling back to local state, so a slow/offline network can't hang the app. */
+const CLOUD_PULL_TIMEOUT_MS = 6_000;
 
 export interface SplitExercise {
   exerciseId: string;
@@ -69,14 +71,31 @@ export function useLocalSplit() {
     void (async () => {
       const local = loadSplit();
       if (cancelled) return;
-      setSplit(local);
 
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) {
+        setSplit(local);
+        return;
+      }
       const userId = await getCurrentUserId();
-      if (!userId || cancelled) return;
+      if (cancelled) return;
+      if (!userId) {
+        setSplit(local);
+        return;
+      }
 
-      const cloud = await pullSplits(userId);
-      if (!cloud || cancelled) return;
+      // Wait for the cloud pull (bounded by a timeout so a slow/offline
+      // network can't hang the app) before showing anything as "loaded" -
+      // same fix as the quest hook, so a split day built on another device
+      // isn't briefly (or, on a flaky connection, not at all) missing here.
+      const cloud = await Promise.race([
+        pullSplits(userId),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), CLOUD_PULL_TIMEOUT_MS)),
+      ]);
+      if (cancelled) return;
+      if (!cloud) {
+        setSplit(local);
+        return;
+      }
 
       try {
         const cloudDays = cloud.splits as SplitDay[];
@@ -85,11 +104,47 @@ export function useLocalSplit() {
         if (!cancelled) setSplit(merged);
       } catch (error) {
         console.error("Failed to merge cloud split state, keeping local state:", error);
+        if (!cancelled) setSplit(local);
       }
     })();
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  // Re-sync from the cloud whenever the tab/app regains focus, so a split day
+  // built on another device shows up here without needing a reload.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    async function resync() {
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+      const cloud = await pullSplits(userId);
+      if (!cloud) return;
+      setSplit((prev) => {
+        if (!prev) return prev;
+        try {
+          const cloudDays = cloud.splits as SplitDay[];
+          const merged: LocalSplitState = { days: mergeDays(prev.days, cloudDays), activeDayId: prev.activeDayId };
+          saveSplit(merged);
+          return merged;
+        } catch (error) {
+          console.error("Failed to merge cloud split state on refocus, keeping current state:", error);
+          return prev;
+        }
+      });
+    }
+
+    function onVisible() {
+      if (document.visibilityState === "visible") void resync();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, []);
 

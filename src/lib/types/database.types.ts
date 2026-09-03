@@ -284,6 +284,8 @@ export interface Database {
           program_updated_at: string | null;
           custom_exercises: unknown[] | null;
           custom_exercises_updated_at: string | null;
+          adaptive_state: Record<string, unknown> | null;
+          adaptive_state_updated_at: string | null;
         };
         Insert: {
           user_id: string;
@@ -293,6 +295,8 @@ export interface Database {
           program_updated_at?: string | null;
           custom_exercises?: unknown[] | null;
           custom_exercises_updated_at?: string | null;
+          adaptive_state?: Record<string, unknown> | null;
+          adaptive_state_updated_at?: string | null;
         };
         Update: {
           user_id?: string;
@@ -302,6 +306,8 @@ export interface Database {
           program_updated_at?: string | null;
           custom_exercises?: unknown[] | null;
           custom_exercises_updated_at?: string | null;
+          adaptive_state?: Record<string, unknown> | null;
+          adaptive_state_updated_at?: string | null;
         };
         Relationships: [];
       };

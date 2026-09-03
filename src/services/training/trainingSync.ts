@@ -84,3 +84,27 @@ export async function pushCustomExercises(userId: string, exercises: unknown[], 
     // Offline or unreachable - the next successful save will catch up.
   }
 }
+
+export async function pullAdaptiveState(userId: string): Promise<{ state: Record<string, unknown>; updatedAt: string } | null> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("training_state")
+      .select("adaptive_state, adaptive_state_updated_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error || !data || !data.adaptive_state || !data.adaptive_state_updated_at) return null;
+    return { state: data.adaptive_state, updatedAt: data.adaptive_state_updated_at };
+  } catch {
+    return null;
+  }
+}
+
+export async function pushAdaptiveState(userId: string, state: Record<string, unknown>, updatedAt: string): Promise<void> {
+  try {
+    const supabase = createClient();
+    await supabase.from("training_state").upsert({ user_id: userId, adaptive_state: state, adaptive_state_updated_at: updatedAt });
+  } catch {
+    // Offline or unreachable - the next successful save will catch up.
+  }
+}

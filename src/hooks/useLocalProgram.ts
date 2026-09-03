@@ -7,7 +7,9 @@ import { pullProgram, pushProgram } from "@/services/training/trainingSync";
 import type { ExperienceLevel, GeneratedProgramExercise, GoalType } from "@/services/ai/types";
 
 const STORAGE_KEY = "adaptive-coach-program-v1";
-const CLOUD_PUSH_DEBOUNCE_MS = 1_500;
+const CLOUD_PUSH_DEBOUNCE_MS = 800;
+/** Caps how long the initial load waits on a cloud pull before falling back to local state, so a slow/offline network can't hang the app. */
+const CLOUD_PULL_TIMEOUT_MS = 6_000;
 
 export interface LocalProgram {
   title: string;
@@ -51,28 +53,84 @@ export function useLocalProgram() {
     void (async () => {
       const local = loadProgram();
       if (cancelled) return;
-      setProgram(local);
 
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) {
+        setProgram(local);
+        return;
+      }
       const userId = await getCurrentUserId();
-      if (!userId || cancelled) return;
+      if (cancelled) return;
+      if (!userId) {
+        setProgram(local);
+        return;
+      }
 
-      const cloud = await pullProgram(userId);
-      if (!cloud || cancelled) return;
+      // Wait for the cloud pull (bounded by a timeout so a slow/offline
+      // network can't hang the app) before showing anything as "loaded" -
+      // same fix as the quest hook, so a program generated on another
+      // device isn't briefly (or, on a flaky connection, not at all)
+      // missing here.
+      const cloud = await Promise.race([
+        pullProgram(userId),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), CLOUD_PULL_TIMEOUT_MS)),
+      ]);
+      if (cancelled) return;
+      if (!cloud) {
+        setProgram(local);
+        return;
+      }
 
       try {
         const cloudProgram = cloud.program as unknown as LocalProgram;
         if (!local || new Date(cloudProgram.createdAt).getTime() > new Date(local.createdAt).getTime()) {
           window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudProgram));
           if (!cancelled) setProgram(cloudProgram);
+        } else {
+          if (!cancelled) setProgram(local);
         }
       } catch (error) {
         console.error("Failed to merge cloud program, keeping local state:", error);
+        if (!cancelled) setProgram(local);
       }
     })();
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  // Re-sync from the cloud whenever the tab/app regains focus, so a program
+  // generated on another device shows up here without needing a reload.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    async function resync() {
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+      const cloud = await pullProgram(userId);
+      if (!cloud) return;
+      try {
+        const cloudProgram = cloud.program as unknown as LocalProgram;
+        setProgram((prev) => {
+          if (prev !== undefined && prev !== null && new Date(prev.createdAt).getTime() >= new Date(cloudProgram.createdAt).getTime()) {
+            return prev;
+          }
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudProgram));
+          return cloudProgram;
+        });
+      } catch (error) {
+        console.error("Failed to merge cloud program on refocus, keeping current state:", error);
+      }
+    }
+
+    function onVisible() {
+      if (document.visibilityState === "visible") void resync();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, []);
 

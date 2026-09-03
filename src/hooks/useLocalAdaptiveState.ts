@@ -2,9 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { evaluateMovement, type MovementParams, type SessionEntry } from "@/lib/adaptive/engine";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getCurrentUserId } from "@/services/gamification/questSync";
+import { pullAdaptiveState, pushAdaptiveState } from "@/services/training/trainingSync";
 import type { Exercise, SignalItem } from "@/lib/types/domain";
 
 const STORAGE_KEY = "adaptive-coach-state-v2";
+const CLOUD_PUSH_DEBOUNCE_MS = 800;
+/** Caps how long the initial load waits on a cloud pull before falling back to local state, so a slow/offline network can't hang the app. */
+const CLOUD_PULL_TIMEOUT_MS = 6_000;
 
 interface SessionLogEntry {
   id: string;
@@ -21,7 +27,7 @@ interface HistoryEntry extends SessionEntry {
   id: string;
 }
 
-interface LocalState {
+export interface LocalState {
   movements: Record<string, MovementParams>;
   history: Record<string, HistoryEntry[]>;
   sessionLog: SessionLogEntry[];
@@ -125,6 +131,66 @@ function saveState(state: LocalState) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function unionHistoryEntries(a: HistoryEntry[], b: HistoryEntry[]): HistoryEntry[] {
+  const byId = new Map<string, HistoryEntry>();
+  for (const e of a) byId.set(e.id, e);
+  for (const e of b) if (!byId.has(e.id)) byId.set(e.id, e);
+  return [...byId.values()].sort((x, y) => new Date(x.date).getTime() - new Date(y.date).getTime());
+}
+
+/**
+ * Merges two LocalStates (this device's and whatever synced from the cloud)
+ * so a logged set from either side is never lost - history and the flat
+ * sessionLog union by entry id, same as the rest of the app's sync. Per-
+ * exercise `movements` params are trickier: evaluateMovement steps them
+ * forward incrementally one session at a time (progress/hold/deload from
+ * wherever they currently are) rather than deriving them purely from
+ * history, so they can't be safely recomputed from a merged history alone.
+ * Instead, whichever side logged the more recent session for that exercise
+ * keeps its params, since that's the freshest incremental state.
+ */
+export function mergeAdaptiveState(a: LocalState, b: LocalState): LocalState {
+  const exerciseIds = new Set([
+    ...Object.keys(a.history),
+    ...Object.keys(b.history),
+    ...Object.keys(a.movements),
+    ...Object.keys(b.movements),
+  ]);
+  const history: Record<string, HistoryEntry[]> = {};
+  const movements: Record<string, MovementParams> = {};
+
+  for (const id of exerciseIds) {
+    const aEntries = a.history[id] ?? [];
+    const bEntries = b.history[id] ?? [];
+    history[id] = unionHistoryEntries(aEntries, bEntries);
+
+    const aParams = a.movements[id];
+    const bParams = b.movements[id];
+    if (!aParams) {
+      if (bParams) movements[id] = bParams;
+      continue;
+    }
+    if (!bParams) {
+      movements[id] = aParams;
+      continue;
+    }
+    const aLatest = aEntries[aEntries.length - 1]?.date;
+    const bLatest = bEntries[bEntries.length - 1]?.date;
+    if (!aLatest) movements[id] = bParams;
+    else if (!bLatest) movements[id] = aParams;
+    else movements[id] = new Date(bLatest).getTime() > new Date(aLatest).getTime() ? bParams : aParams;
+  }
+
+  const sessionById = new Map<string, SessionLogEntry>();
+  for (const s of [...a.sessionLog, ...b.sessionLog]) sessionById.set(s.id, s);
+  const sessionLog = [...sessionById.values()].sort((x, y) => new Date(x.date).getTime() - new Date(y.date).getTime());
+
+  const lastSignalById = new Map<string, SignalItem>();
+  for (const s of [...a.lastSignal, ...b.lastSignal]) lastSignalById.set(s.movementId, s);
+
+  return withDerived({ movements, history, sessionLog, lastSignal: [...lastSignalById.values()].slice(0, 6) });
+}
+
 export function useLocalAdaptiveState(exercises: Exercise[]) {
   const [state, setState] = useState<LocalState | null>(null);
 
@@ -132,10 +198,102 @@ export function useLocalAdaptiveState(exercises: Exercise[]) {
     // localStorage isn't available during SSR, so the real state can only be
     // loaded after mount - this intentionally causes one extra client render
     // (the caller shows a skeleton via isLoading until then).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setState(loadState(exercises));
+    let cancelled = false;
+
+    void (async () => {
+      const local = loadState(exercises);
+      if (cancelled) return;
+
+      if (!isSupabaseConfigured) {
+        setState(local);
+        return;
+      }
+      const userId = await getCurrentUserId();
+      if (cancelled) return;
+      if (!userId) {
+        setState(local);
+        return;
+      }
+
+      // Wait for the cloud pull (bounded by a timeout so a slow/offline
+      // network can't hang the app) before showing anything as "loaded" -
+      // same fix as the quest/gamification hook, so history logged on
+      // another device isn't briefly (or, on a flaky connection,
+      // permanently) missing from streak/week-completion here too.
+      const cloud = await Promise.race([
+        pullAdaptiveState(userId),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), CLOUD_PULL_TIMEOUT_MS)),
+      ]);
+      if (cancelled) return;
+      if (!cloud) {
+        setState(local);
+        return;
+      }
+
+      try {
+        const cloudState = migrateIds(cloud.state as unknown as LocalState);
+        const merged = mergeAdaptiveState(local, cloudState);
+        saveState(merged);
+        if (!cancelled) setState(merged);
+      } catch (error) {
+        console.error("Failed to merge cloud adaptive state, keeping local state:", error);
+        if (!cancelled) setState(local);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-sync from the cloud whenever the tab/app regains focus, so history
+  // logged on another device shows up here without needing a reload.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    async function resync() {
+      const userId = await getCurrentUserId();
+      if (!userId) return;
+      const cloud = await pullAdaptiveState(userId);
+      if (!cloud) return;
+      setState((prev) => {
+        if (!prev) return prev;
+        try {
+          const cloudState = migrateIds(cloud.state as unknown as LocalState);
+          const merged = mergeAdaptiveState(prev, cloudState);
+          saveState(merged);
+          return merged;
+        } catch (error) {
+          console.error("Failed to merge cloud adaptive state on refocus, keeping current state:", error);
+          return prev;
+        }
+      });
+    }
+
+    function onVisible() {
+      if (document.visibilityState === "visible") void resync();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, []);
+
+  // Debounced cloud push - mirrors every local save to `training_state` when signed in.
+  useEffect(() => {
+    if (state === null || !isSupabaseConfigured) return;
+    const id = setTimeout(() => {
+      void (async () => {
+        const userId = await getCurrentUserId();
+        if (!userId) return;
+        await pushAdaptiveState(userId, state as unknown as Record<string, unknown>, new Date().toISOString());
+      })();
+    }, CLOUD_PUSH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [state]);
 
   /**
    * `exercises` (the resolved active plan) can still be settling when the
