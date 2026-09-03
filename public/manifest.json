@@ -1,7 +1,7 @@
 {
   "id": "/home",
-  "name": "GymBro - System",
-  "short_name": "GymBro",
+  "name": "Lock In - System",
+  "short_name": "Lock In",
   "description": "A leveling-up System for training, looks, and daily discipline - quests, routines, and ranks that adjust to how you're actually performing.",
   "start_url": "/home",
   "scope": "/",

@@ -17,7 +17,7 @@ export function InstallBanner() {
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium text-foreground">Install the System</div>
         <div className="truncate text-xs text-muted-foreground">
-          {canPromptInstall ? "Add GymBro to your home screen for the full app experience." : 'Tap Share, then "Add to Home Screen."'}
+          {canPromptInstall ? "Add Lock In to your home screen for the full app experience." : 'Tap Share, then "Add to Home Screen."'}
         </div>
       </div>
       {canPromptInstall && (

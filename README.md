@@ -1,4 +1,4 @@
-# 🏋️ GymBro
+# 🏋️ Lock In
 
 A calisthenics training app that adjusts to how you're actually performing —
 being rebuilt from a static prototype into a full product: an AI program
@@ -358,6 +358,12 @@ splits before it - no accounts required.
   always-visible banner cards in the normal page flow - bigger, bolder,
   and confirmed visible top-to-bottom of the page instead of only in a
   thin gap near the top.
+
+### ✅ Phase 7 — Rebrand to Lock In (done)
+- **Rebrand:** display name changed from GymBro to Lock In across the
+  header, sidebar, auth pages, manifest, install banner, settings copy,
+  and this README (internal package/folder names stay `adaptive-coach`,
+  same policy as the earlier GymBro rebrand in Phase 4).
 
 ### 🔮 Future (flagged, not scheduled)
 - **Wearable / device integration** — auto-detecting a completed set or a

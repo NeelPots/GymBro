@@ -103,7 +103,7 @@ export default async function SettingsPage() {
       <SettingsSection label="Appearance">
         <SettingsRow
           label="Theme"
-          description="GymBro is dark-first by design - no light theme yet."
+          description="Lock In is dark-first by design - no light theme yet."
           control={<Badge variant="secondary">Dark</Badge>}
         />
       </SettingsSection>

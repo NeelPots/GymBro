@@ -23,7 +23,7 @@ const fontMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GymBro",
+  title: "Lock In",
   description:
     "A leveling-up System for training, looks, and daily discipline - quests, routines, and ranks that adjust to how you're actually performing.",
   manifest: "/manifest.json",
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   // equivalent (mobile-web-app-capable, used by Chrome/Android too).
   appleWebApp: {
     statusBarStyle: "black-translucent",
-    title: "GymBro",
+    title: "Lock In",
   },
   other: {
     "mobile-web-app-capable": "yes",
