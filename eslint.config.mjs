@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // The original prototype, kept for reference only - not part of the new app.
     "legacy/**",
+    // The native Capacitor Android project - Java/Gradle, plus vendored/generated
+    // JS in its build output that isn't part of this app's own source.
+    "android/**",
   ]),
 ]);
 

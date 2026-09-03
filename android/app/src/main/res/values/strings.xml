@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lock Inn</string>
+    <string name="title_activity_main">Lock Inn</string>
+    <string name="package_name">com.lockinn.app</string>
+    <string name="custom_url_scheme">com.lockinn.app</string>
+</resources>

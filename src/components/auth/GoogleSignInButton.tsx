@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+
+/** Must match capacitor.config.ts's appId, and be registered under Supabase's Authentication -> URL Configuration -> Redirect URLs. */
+const NATIVE_AUTH_REDIRECT = "com.lockinn.app://auth/callback";
 
 function GoogleMark() {
   return (
@@ -34,6 +39,27 @@ export function GoogleSignInButton() {
   async function handleClick() {
     setIsLoading(true);
     const supabase = createClient();
+
+    // Google refuses to let you sign in from inside a plain WebView (the
+    // native app's whole UI), so on native we open the OAuth URL in the
+    // system browser instead of letting Supabase redirect this page - the
+    // round trip back into the app is caught by NativeAuthListener via the
+    // com.lockinn.app:// deep link registered in AndroidManifest.xml.
+    if (Capacitor.isNativePlatform()) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: NATIVE_AUTH_REDIRECT, skipBrowserRedirect: true },
+      });
+      if (error || !data.url) {
+        toast.error(error?.message ?? "Couldn't start Google sign-in.");
+        setIsLoading(false);
+        return;
+      }
+      await Browser.open({ url: data.url });
+      setIsLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },

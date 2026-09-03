@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegister } from "@/components/shared/ServiceWorkerRegister";
+import { NativeAuthListener } from "@/components/auth/NativeAuthListener";
 import "./globals.css";
 
 const fontDisplay = Space_Grotesk({
@@ -74,6 +75,7 @@ export default function RootLayout({
         {children}
         <Toaster />
         <ServiceWorkerRegister />
+        <NativeAuthListener />
       </body>
     </html>
   );
