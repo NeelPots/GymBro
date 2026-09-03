@@ -5,7 +5,8 @@ import type { MovementParams } from "@/lib/adaptive/engine";
 interface MovementTileProps {
   name: string;
   category: string;
-  params: MovementParams;
+  /** Can briefly be undefined if this exercise's local movement record hasn't loaded/backfilled yet. */
+  params: MovementParams | undefined;
   onLog: () => void;
 }
 
@@ -20,10 +21,10 @@ export function MovementTile({ name, category, params, onLog }: MovementTileProp
       <div>
         <div className="text-sm font-medium text-foreground">{name}</div>
         <div className="mt-0.5 font-mono text-xs text-muted-foreground">
-          {params.sets} × {params.reps} · tier {params.difficultyTier}
+          {params ? `${params.sets} × ${params.reps} · tier ${params.difficultyTier}` : "loading…"}
         </div>
       </div>
-      <Button variant="outline" size="sm" onClick={onLog} className="mt-1 w-full font-mono">
+      <Button variant="outline" size="sm" onClick={onLog} disabled={!params} className="mt-1 w-full font-mono">
         Log
       </Button>
     </div>

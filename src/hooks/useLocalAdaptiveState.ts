@@ -137,6 +137,37 @@ export function useLocalAdaptiveState(exercises: Exercise[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * `exercises` (the resolved active plan) can still be settling when the
+   * effect above runs - useLocalSplit/useLocalCustomExercises/
+   * useActivePlanSource all load asynchronously a beat after mount, so the
+   * very first `exercises` value is often the fallback default plan, not
+   * the real active split. Since the mount effect above only runs once,
+   * any exercise that only shows up once those finish loading (a custom
+   * exercise in an activated split, most commonly) would otherwise never
+   * get a `movements` entry - and every consumer assumes that entry
+   * exists unconditionally, so a missing one crashes the page rather than
+   * rendering incorrectly. Backfill it whenever the resolved list changes.
+   */
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- backfilling movements for exercises that appeared after mount, guarded to no-op when nothing's missing
+    setState((prev) => {
+      if (!prev) return prev;
+      const missing = exercises.filter((e) => !prev.movements[e.id]);
+      if (missing.length === 0) return prev;
+
+      const movements = { ...prev.movements };
+      const history = { ...prev.history };
+      for (const e of missing) {
+        movements[e.id] = { reps: e.defaultReps, sets: e.defaultSets, difficultyTier: e.difficultyTier };
+        history[e.id] = [];
+      }
+      const next = { ...prev, movements, history };
+      saveState(next);
+      return next;
+    });
+  }, [exercises]);
+
   const logSession = useCallback(
     (exerciseId: string, completedReps: number, completedSets: number, rpe: number) => {
       setState((prev) => {

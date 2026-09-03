@@ -185,6 +185,7 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
           if (!activeExerciseId) return;
 
           const params = state.movements[activeExerciseId];
+          if (!params) return;
           const entry: SessionEntry = {
             date: new Date().toISOString().slice(0, 10),
             targetReps: params.reps,
