@@ -36,29 +36,56 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
   )
 }
 
+/**
+ * Tracks `window.visualViewport`'s height so a sheet can clamp itself to what's
+ * actually visible - on mobile, an on-screen keyboard shrinks the visual viewport
+ * without shrinking `100vh`/`100dvh`, which otherwise leaves content (e.g. a
+ * footer save button) hidden behind the keyboard with no way to scroll to it.
+ */
+function useVisualViewportHeight() {
+  const [height, setHeight] = React.useState<number | null>(null)
+  React.useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null
+    if (!vv) return
+    const update = () => setHeight(vv.height)
+    update()
+    vv.addEventListener("resize", update)
+    return () => vv.removeEventListener("resize", update)
+  }, [])
+  return height
+}
+
 function SheetContent({
   className,
   children,
   side = "right",
   showCloseButton = true,
+  style,
   ...props
 }: SheetPrimitive.Popup.Props & {
-  side?: "top" | "right" | "bottom" | "left"
+  side?: "top" | "right" | "bottom" | "left" | "center"
   showCloseButton?: boolean
 }) {
+  const viewportHeight = useVisualViewportHeight()
+  const clampedStyle =
+    viewportHeight != null
+      ? { maxHeight: Math.round(viewportHeight - 24), ...style }
+      : style
+
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         data-side={side}
+        style={clampedStyle}
         className={cn(
           // `!fixed` (important) because callers merge in decorative classes (e.g. `.hud-panel`,
           // a custom utility that also sets `position: relative` for its glow effect) which live in
           // the same cascade layer and would otherwise silently win the `position` property by
           // source order alone, turning the sheet into an in-flow element positioned at whatever
           // scroll offset the page happened to be at instead of anchored to the viewport.
-          "!fixed z-50 flex flex-col gap-4 bg-popover bg-clip-padding text-sm text-popover-foreground shadow-lg transition duration-200 ease-in-out data-ending-style:opacity-0 data-starting-style:opacity-0 data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=bottom]:data-ending-style:translate-y-[2.5rem] data-[side=bottom]:data-starting-style:translate-y-[2.5rem] data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:border-r data-[side=left]:data-ending-style:translate-x-[-2.5rem] data-[side=left]:data-starting-style:translate-x-[-2.5rem] data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:border-l data-[side=right]:data-ending-style:translate-x-[2.5rem] data-[side=right]:data-starting-style:translate-x-[2.5rem] data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:border-b data-[side=top]:data-ending-style:translate-y-[-2.5rem] data-[side=top]:data-starting-style:translate-y-[-2.5rem] data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm",
+          "!fixed z-50 flex flex-col gap-4 bg-popover bg-clip-padding text-sm text-popover-foreground shadow-lg transition duration-200 ease-in-out data-ending-style:opacity-0 data-starting-style:opacity-0 data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=bottom]:data-ending-style:translate-y-[2.5rem] data-[side=bottom]:data-starting-style:translate-y-[2.5rem] data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:border-r data-[side=left]:data-ending-style:translate-x-[-2.5rem] data-[side=left]:data-starting-style:translate-x-[-2.5rem] data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:border-l data-[side=right]:data-ending-style:translate-x-[2.5rem] data-[side=right]:data-starting-style:translate-x-[2.5rem] data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:border-b data-[side=top]:data-ending-style:translate-y-[-2.5rem] data-[side=top]:data-starting-style:translate-y-[-2.5rem] data-[side=center]:inset-0 data-[side=center]:m-auto data-[side=center]:h-fit data-[side=center]:max-h-[85dvh] data-[side=center]:w-[calc(100%-2rem)] data-[side=center]:rounded-2xl data-[side=center]:border data-[side=center]:data-ending-style:scale-95 data-[side=center]:data-starting-style:scale-95 data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm",
           className
         )}
         {...props}

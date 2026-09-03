@@ -127,8 +127,8 @@ export function SplitDayEditorSheet({ open, onOpenChange, day, exercises, onSave
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
-        className="mx-auto flex max-h-[85vh] max-w-xl flex-col rounded-t-2xl border-t border-border bg-surface-2 px-5 pt-2"
+        side="center"
+        className="flex max-w-xl flex-col border-border bg-surface-2 px-5 pt-2"
       >
         <SheetHeader className="px-0">
           <SheetTitle className="font-display text-lg">{day ? "Edit day" : "New split day"}</SheetTitle>

@@ -98,7 +98,7 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="mx-auto flex max-h-[88vh] max-w-xl flex-col rounded-t-2xl border-t border-signal/25 bg-surface-2 px-5 pt-2 hud-panel">
+      <SheetContent side="center" className="flex max-w-xl flex-col border-signal/25 bg-surface-2 px-5 pt-2 hud-panel">
         <SheetHeader className="px-0">
           <SheetTitle className="font-display text-lg">{isEditing ? "Edit Quest" : "New Quest"}</SheetTitle>
         </SheetHeader>
