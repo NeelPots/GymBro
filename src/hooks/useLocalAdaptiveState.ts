@@ -248,7 +248,11 @@ export function useLocalAdaptiveState(exercises: Exercise[]) {
   }, []);
 
   // Re-sync from the cloud whenever the tab/app regains focus, so history
-  // logged on another device shows up here without needing a reload.
+  // logged on another device shows up here without needing a reload. Also
+  // re-pushes the (now-merged) state afterward - the debounced push effect
+  // below only fires on a local change, so if an earlier push silently
+  // failed (offline, a table that didn't exist yet, etc.) and nothing local
+  // has changed since, it would otherwise never retry.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
@@ -256,19 +260,26 @@ export function useLocalAdaptiveState(exercises: Exercise[]) {
       const userId = await getCurrentUserId();
       if (!userId) return;
       const cloud = await pullAdaptiveState(userId);
-      if (!cloud) return;
+      let toPush: LocalState | null = null;
       setState((prev) => {
         if (!prev) return prev;
+        if (!cloud) {
+          toPush = prev;
+          return prev;
+        }
         try {
           const cloudState = migrateIds(cloud.state as unknown as LocalState);
           const merged = mergeAdaptiveState(prev, cloudState);
           saveState(merged);
+          toPush = merged;
           return merged;
         } catch (error) {
           console.error("Failed to merge cloud adaptive state on refocus, keeping current state:", error);
+          toPush = prev;
           return prev;
         }
       });
+      if (toPush) await pushAdaptiveState(userId, toPush as unknown as Record<string, unknown>, new Date().toISOString());
     }
 
     function onVisible() {

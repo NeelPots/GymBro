@@ -101,6 +101,11 @@ export function useLocalProgram() {
 
   // Re-sync from the cloud whenever the tab/app regains focus, so a program
   // generated on another device shows up here without needing a reload.
+  // Also re-pushes afterward (whichever program - local or the one just
+  // adopted from the cloud - is now current) - the debounced push effect
+  // below only fires on a local change, so if an earlier push silently
+  // failed (offline, a table that didn't exist yet, etc.) and nothing local
+  // has changed since, it would otherwise never retry.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
@@ -108,18 +113,30 @@ export function useLocalProgram() {
       const userId = await getCurrentUserId();
       if (!userId) return;
       const cloud = await pullProgram(userId);
-      if (!cloud) return;
-      try {
-        const cloudProgram = cloud.program as unknown as LocalProgram;
+      let toPush: LocalProgram | null | undefined;
+      if (!cloud) {
         setProgram((prev) => {
-          if (prev !== undefined && prev !== null && new Date(prev.createdAt).getTime() >= new Date(cloudProgram.createdAt).getTime()) {
-            return prev;
-          }
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudProgram));
-          return cloudProgram;
+          toPush = prev;
+          return prev;
         });
-      } catch (error) {
-        console.error("Failed to merge cloud program on refocus, keeping current state:", error);
+      } else {
+        try {
+          const cloudProgram = cloud.program as unknown as LocalProgram;
+          setProgram((prev) => {
+            if (prev !== undefined && prev !== null && new Date(prev.createdAt).getTime() >= new Date(cloudProgram.createdAt).getTime()) {
+              toPush = prev;
+              return prev;
+            }
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudProgram));
+            toPush = cloudProgram;
+            return cloudProgram;
+          });
+        } catch (error) {
+          console.error("Failed to merge cloud program on refocus, keeping current state:", error);
+        }
+      }
+      if (toPush !== undefined) {
+        await pushProgram(userId, toPush as unknown as Record<string, unknown> | null, new Date().toISOString());
       }
     }
 

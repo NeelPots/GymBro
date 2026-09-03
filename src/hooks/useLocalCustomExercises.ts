@@ -95,7 +95,11 @@ export function useLocalCustomExercises() {
   }, []);
 
   // Re-sync from the cloud whenever the tab/app regains focus, so a custom
-  // exercise added on another device shows up here without needing a reload.
+  // exercise added on another device shows up here without needing a
+  // reload. Also re-pushes the (now-merged) state afterward - the debounced
+  // push effect below only fires on a local change, so if an earlier push
+  // silently failed (offline, a table that didn't exist yet, etc.) and
+  // nothing local has changed since, it would otherwise never retry.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
@@ -103,19 +107,26 @@ export function useLocalCustomExercises() {
       const userId = await getCurrentUserId();
       if (!userId) return;
       const cloud = await pullCustomExercises(userId);
-      if (!cloud) return;
+      let toPush: Exercise[] | null = null;
       setExercises((prev) => {
         if (prev === undefined) return prev;
+        if (!cloud) {
+          toPush = prev;
+          return prev;
+        }
         try {
           const cloudExercises = cloud.exercises as Exercise[];
           const merged = mergeExercises(prev, cloudExercises);
           saveCustomExercises(merged);
+          toPush = merged;
           return merged;
         } catch (error) {
           console.error("Failed to merge cloud custom exercises on refocus, keeping current state:", error);
+          toPush = prev;
           return prev;
         }
       });
+      if (toPush) await pushCustomExercises(userId, toPush, new Date().toISOString());
     }
 
     function onVisible() {

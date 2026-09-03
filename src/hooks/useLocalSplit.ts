@@ -114,7 +114,11 @@ export function useLocalSplit() {
   }, []);
 
   // Re-sync from the cloud whenever the tab/app regains focus, so a split day
-  // built on another device shows up here without needing a reload.
+  // built on another device shows up here without needing a reload. Also
+  // re-pushes the (now-merged) state afterward - the debounced push effect
+  // below only fires on a local change, so if an earlier push silently
+  // failed (offline, a table that didn't exist yet, etc.) and nothing local
+  // has changed since, it would otherwise never retry.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
@@ -122,19 +126,26 @@ export function useLocalSplit() {
       const userId = await getCurrentUserId();
       if (!userId) return;
       const cloud = await pullSplits(userId);
-      if (!cloud) return;
+      let toPush: LocalSplitState | null = null;
       setSplit((prev) => {
         if (!prev) return prev;
+        if (!cloud) {
+          toPush = prev;
+          return prev;
+        }
         try {
           const cloudDays = cloud.splits as SplitDay[];
           const merged: LocalSplitState = { days: mergeDays(prev.days, cloudDays), activeDayId: prev.activeDayId };
           saveSplit(merged);
+          toPush = merged;
           return merged;
         } catch (error) {
           console.error("Failed to merge cloud split state on refocus, keeping current state:", error);
+          toPush = prev;
           return prev;
         }
       });
+      if (toPush) await pushSplits(userId, (toPush as LocalSplitState).days, new Date().toISOString());
     }
 
     function onVisible() {

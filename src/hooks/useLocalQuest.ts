@@ -550,7 +550,11 @@ export function useLocalQuest() {
   // that's been sitting open in the background (or was just switched back
   // to) picks up what happened on other devices without needing a reload -
   // completing this app's "everything follows you across devices" promise
-  // beyond just the initial mount.
+  // beyond just the initial mount. Also re-pushes the (now-merged) state
+  // afterward - the debounced push effect below only fires on a local
+  // change, so if an earlier push silently failed (offline, a table that
+  // didn't exist yet, etc.) and nothing local has changed since, it would
+  // otherwise never retry.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
@@ -558,16 +562,24 @@ export function useLocalQuest() {
       const userId = await getCurrentUserId();
       if (!userId) return;
       const cloud = await pullQuestState(userId);
-      if (!cloud) return;
+      let toPush: QuestState | null = null;
       setQuest((prev) => {
         if (!prev) return prev;
+        if (!cloud) {
+          toPush = prev;
+          return prev;
+        }
         try {
-          return saveQuest(tick(mergeQuestStates(prev, normalizeCloudState(cloud.state as Record<string, unknown>))));
+          const merged = saveQuest(tick(mergeQuestStates(prev, normalizeCloudState(cloud.state as Record<string, unknown>))));
+          toPush = merged;
+          return merged;
         } catch (error) {
           console.error("Failed to merge cloud quest state on refocus, keeping current state:", error);
+          toPush = prev;
           return prev;
         }
       });
+      if (toPush) await pushQuestState(userId, toPush, (toPush as QuestState).updatedAt);
     }
 
     function onVisible() {
