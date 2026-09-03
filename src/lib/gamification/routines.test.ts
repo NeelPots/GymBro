@@ -58,6 +58,17 @@ describe("isStepDueToday", () => {
     // pattern, not a reminder that reschedules around actual completion.
     expect(isStepDueToday(step, new Date("2026-01-09T12:00:00.000Z"), "2026-01-01T00:00:00.000Z")).toBe(true);
   });
+
+  it("lets an explicit anchorDate override createdAt, so the user can pick which day is on vs off", () => {
+    // createdAt alone would make Jan 5 an off day (daysSinceStart=3, 3 % 4 === 3, not < onDays).
+    const step = makeStep({
+      schedule: { kind: "cycle", onDays: 3, offDays: 1, anchorDate: "2026-01-05T00:00:00.000Z" },
+      createdAt: "2026-01-02T00:00:00.000Z",
+    });
+    // The anchorDate makes Jan 5 day 0 of the rotation instead - an on day.
+    expect(isStepDueToday(step, new Date("2026-01-05T12:00:00.000Z"))).toBe(true);
+    expect(isStepDueToday(step, new Date("2026-01-08T12:00:00.000Z"))).toBe(false); // day 3 - off
+  });
 });
 
 describe("describeSchedule", () => {

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { NumberStepper } from "@/components/shared/NumberStepper";
 import { CATEGORY_STAT, QUEST_CATEGORY_LABELS, type QuestCategory } from "@/lib/gamification/quests";
 import { STAT_LABELS, type Stats } from "@/lib/gamification/stats";
+import { isStepDueToday } from "@/lib/gamification/routines";
 import type { RoutineStep } from "@/lib/gamification/routines";
 import type { ScheduleKind, Schedule } from "@/lib/gamification/routines";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,7 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
   const [intervalDays, setIntervalDays] = useState(3);
   const [onDays, setOnDays] = useState(3);
   const [offDays, setOffDays] = useState(1);
+  const [todayIsOn, setTodayIsOn] = useState(true);
 
   useEffect(() => {
     if (!open) return;
@@ -68,6 +70,7 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
       setIntervalDays(step.schedule.intervalDays ?? 3);
       setOnDays(step.schedule.onDays ?? 3);
       setOffDays(step.schedule.offDays ?? 1);
+      setTodayIsOn(step.schedule.kind === "cycle" ? isStepDueToday(step, new Date()) : true);
     } else {
       setName("");
       setExp(50);
@@ -77,6 +80,7 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
       setIntervalDays(3);
       setOnDays(3);
       setOffDays(1);
+      setTodayIsOn(true);
     }
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [open, step]);
@@ -89,7 +93,14 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
     if (scheduleKind === "weekdays") return { kind: "weekdays", weekdays };
     if (scheduleKind === "interval") return { kind: "interval", intervalDays: Math.max(2, Math.min(14, intervalDays)) };
     if (scheduleKind === "cycle") {
-      return { kind: "cycle", onDays: Math.max(1, Math.min(14, onDays)), offDays: Math.max(0, Math.min(14, offDays)) };
+      const clampedOn = Math.max(1, Math.min(14, onDays));
+      const clampedOff = Math.max(0, Math.min(14, offDays));
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      // "Today is on" -> today is day 0 of the rotation. "Today is off" -> shift the anchor back by
+      // onDays so today lands on the first rest day instead - the user is picking a phase, not a date.
+      const anchor = todayIsOn ? startOfToday : new Date(startOfToday.getTime() - clampedOn * 86_400_000);
+      return { kind: "cycle", onDays: clampedOn, offDays: clampedOff, anchorDate: anchor.toISOString() };
     }
     return { kind: "daily" };
   }
@@ -217,9 +228,47 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
                 <div className="flex items-center gap-3">
                   <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">Off</span>
                   <div className="w-28">
-                    <NumberStepper value={offDays} onChange={(v) => setOffDays(Math.max(0, Math.min(14, v)))} min={0} />
+                    <NumberStepper
+                      value={offDays}
+                      onChange={(v) => {
+                        const clamped = Math.max(0, Math.min(14, v));
+                        setOffDays(clamped);
+                        if (clamped === 0) setTodayIsOn(true);
+                      }}
+                      min={0}
+                    />
                   </div>
                   <span className="font-mono text-xs text-muted-foreground">days</span>
+                </div>
+
+                <div>
+                  <span className="mb-1.5 block font-mono text-[11px] text-muted-foreground">Today is</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTodayIsOn(true)}
+                      className={cn(
+                        "rounded-md border px-2 py-2 text-center font-mono text-[11px] transition-colors",
+                        todayIsOn ? "border-signal/50 bg-signal/10 text-signal" : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Workout day
+                    </button>
+                    <button
+                      type="button"
+                      disabled={offDays === 0}
+                      onClick={() => setTodayIsOn(false)}
+                      className={cn(
+                        "rounded-md border px-2 py-2 text-center font-mono text-[11px] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+                        !todayIsOn ? "border-signal/50 bg-signal/10 text-signal" : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Rest day
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">
+                    Sets which phase of the rotation today falls on - the rest of the cycle counts from there.
+                  </p>
                 </div>
               </div>
             )}

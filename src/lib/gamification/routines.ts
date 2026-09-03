@@ -27,6 +27,14 @@ export interface Schedule {
   onDays?: number;
   /** Consecutive "off"/rest days per rotation. Only meaningful when kind === "cycle". */
   offDays?: number;
+  /**
+   * ISO date marking day 0 (the first "on" day) of a cycle rotation. Lets the
+   * user explicitly pick which day is on vs off (e.g. "today is a rest day")
+   * instead of the rotation being locked to whatever day the step happened to
+   * be created on. Falls back to `RoutineStep.createdAt` when absent, so
+   * steps created before this field existed keep working unchanged.
+   */
+  anchorDate?: string;
 }
 
 export const DAILY_SCHEDULE: Schedule = { kind: "daily" };
@@ -69,7 +77,8 @@ export function isStepDueToday(step: RoutineStep, today: Date, lastCompletedAt?:
       const onDays = Math.max(1, step.schedule.onDays ?? 1);
       const offDays = Math.max(0, step.schedule.offDays ?? 0);
       const cycleLength = onDays + offDays;
-      const daysSinceStart = Math.floor((today.getTime() - new Date(step.createdAt).getTime()) / 86_400_000);
+      const anchor = new Date(step.schedule.anchorDate ?? step.createdAt);
+      const daysSinceStart = Math.floor((today.getTime() - anchor.getTime()) / 86_400_000);
       if (daysSinceStart < 0) return true;
       return (daysSinceStart % cycleLength) < onDays;
     }
