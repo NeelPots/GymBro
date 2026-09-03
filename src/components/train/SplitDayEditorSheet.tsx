@@ -128,13 +128,13 @@ export function SplitDayEditorSheet({ open, onOpenChange, day, exercises, onSave
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="mx-auto flex max-h-[85vh] max-w-xl flex-col rounded-t-2xl border-t border-border bg-surface-2 px-5 pt-2 pb-8"
+        className="mx-auto flex max-h-[85vh] max-w-xl flex-col rounded-t-2xl border-t border-border bg-surface-2 px-5 pt-2"
       >
         <SheetHeader className="px-0">
           <SheetTitle className="font-display text-lg">{day ? "Edit day" : "New split day"}</SheetTitle>
         </SheetHeader>
 
-        <div className="flex flex-col gap-4 overflow-y-auto px-0">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-0 pb-1">
           <div>
             <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">Day name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Push Day" />
@@ -263,7 +263,7 @@ export function SplitDayEditorSheet({ open, onOpenChange, day, exercises, onSave
           </div>
         </div>
 
-        <SheetFooter className="flex-row gap-2.5 px-0">
+        <SheetFooter className="flex-row gap-2.5 border-t border-border px-0 pt-4 pb-8">
           <Button variant="secondary" className="flex-1" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

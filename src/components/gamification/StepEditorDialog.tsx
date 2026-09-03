@@ -98,12 +98,12 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="mx-auto max-h-[88vh] max-w-xl overflow-y-auto rounded-t-2xl border-t border-signal/25 bg-surface-2 px-5 pt-2 pb-8 hud-panel">
+      <SheetContent side="bottom" className="mx-auto flex max-h-[88vh] max-w-xl flex-col rounded-t-2xl border-t border-signal/25 bg-surface-2 px-5 pt-2 hud-panel">
         <SheetHeader className="px-0">
           <SheetTitle className="font-display text-lg">{isEditing ? "Edit Quest" : "New Quest"}</SheetTitle>
         </SheetHeader>
 
-        <div className="flex flex-col gap-4 px-0">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-0 pb-1">
           <div>
             <Label htmlFor="step-name" className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">
               Objective
@@ -226,7 +226,7 @@ export function StepEditorDialog({ open, onOpenChange, step, onSave }: StepEdito
           </div>
         </div>
 
-        <SheetFooter className="flex-row gap-2.5 px-0">
+        <SheetFooter className="flex-row gap-2.5 border-t border-border px-0 pt-4 pb-8">
           <Button variant="secondary" className="flex-1" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
