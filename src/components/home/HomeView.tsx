@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Swords } from "lucide-react";
+import { ChevronDown, Swords } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { useCollapsible } from "@/hooks/useCollapsible";
 import { SignalPanel } from "@/components/signal/SignalPanel";
 import { MovementTile } from "@/components/movement/MovementTile";
 import { LogSetSheet } from "@/components/movement/LogSetSheet";
@@ -41,6 +43,7 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const [sleepPromptOpen, setSleepPromptOpen] = useState(false);
+  const { collapsed: planCollapsed, toggle: togglePlanCollapsed } = useCollapsible("home-plan");
 
   useEffect(() => {
     quest.syncStreak(streak, hasLoggedBefore);
@@ -132,8 +135,20 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
         </div>
 
         <div className="rounded-[var(--radius)] border border-border bg-surface p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="font-display text-[17px] font-semibold">{planTitle}</h2>
+          <div className={cn("flex items-center justify-between gap-3", !planCollapsed && "mb-4")}>
+            <button
+              type="button"
+              onClick={() => {
+                systemAudio.click();
+                togglePlanCollapsed();
+              }}
+              aria-expanded={!planCollapsed}
+              aria-label={planCollapsed ? `Expand ${planTitle}` : `Collapse ${planTitle}`}
+              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            >
+              <ChevronDown size={16} className={cn("shrink-0 text-muted-foreground transition-transform", planCollapsed && "-rotate-90")} />
+              <h2 className="truncate font-display text-[17px] font-semibold">{planTitle}</h2>
+            </button>
             <Link
               href="/train"
               className="shrink-0 rounded-md bg-surface-2 px-2 py-0.75 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
@@ -141,17 +156,19 @@ export function HomeView({ exercises }: { exercises: Exercise[] }) {
               {planBadgeLabel}
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {planExercises.map((exercise) => (
-              <MovementTile
-                key={exercise.id}
-                name={exercise.name}
-                category={exercise.category}
-                params={state.movements[exercise.id]}
-                onLog={() => setActiveExerciseId(exercise.id)}
-              />
-            ))}
-          </div>
+          {!planCollapsed && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {planExercises.map((exercise) => (
+                <MovementTile
+                  key={exercise.id}
+                  name={exercise.name}
+                  category={exercise.category}
+                  params={state.movements[exercise.id]}
+                  onLog={() => setActiveExerciseId(exercise.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
